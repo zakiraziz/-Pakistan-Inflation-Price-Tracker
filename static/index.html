@@ -10,16 +10,41 @@
 <body>
 <header>
   <h1>🇵🇰 Pakistan Inflation / Price Tracker</h1>
-  <p class="sub">Weekly prices for a basket of everyday goods · data via <code>app.py</code> / <code>job.py</code></p>
+  <p class="sub">Weekly prices for a basket of everyday goods · Flask + SQLite + Chart.js</p>
+  <button id="updateNow" class="btn ghost">↻ Update now (ingest)</button>
 </header>
 
 <section class="controls">
-  <label>From <input type="date" id="start" /></label>
-  <label>To <input type="date" id="end" /></label>
-  <label>Jump alert ≥
-    <input type="number" id="threshold" value="5" min="1" max="100" step="1" /> %
-  </label>
-  <button id="apply" class="btn">Apply filters</button>
+  <div class="group">
+    <span class="label">Date range</span>
+    <div class="presets">
+      <button class="preset" data-months="3">3M</button>
+      <button class="preset" data-months="6">6M</button>
+      <button class="preset" data-months="12" data-active="1">1Y</button>
+      <button class="preset" data-all="1">All</button>
+    </div>
+    <div class="range">
+      <input type="date" id="start" aria-label="From" />
+      <span class="dash">→</span>
+      <input type="date" id="end" aria-label="To" />
+    </div>
+  </div>
+
+  <div class="group">
+    <span class="label">Jump alert ≥</span>
+    <input type="number" id="threshold" value="5" min="1" max="100" step="1" class="num" /> %
+  </div>
+
+  <div class="group">
+    <button id="apply" class="btn">Apply</button>
+    <button id="export" class="btn ghost" title="Download CSV of this view">⤓ CSV</button>
+  </div>
+</section>
+
+<section class="tabs">
+  <button data-view="items" class="tab on">📈 Item prices</button>
+  <button data-view="index" class="tab">🛒 Basket cost index</button>
+  <span class="info" id="infoLine" aria-live="polite"></span>
 </section>
 
 <section class="filters">
@@ -34,19 +59,23 @@
 <section class="cards" id="cards"></section>
 
 <section class="chart-wrap">
-  <canvas id="priceChart"></canvas>
+  <canvas id="itemChart"></canvas>
+  <canvas id="indexChart" style="display:none"></canvas>
   <p class="hint" id="chartHint"></p>
 </section>
 
 <section class="alerts">
-  <h2>⚠️ Price-jump alerts</h2>
+  <h2>⚠️ Price-jump alerts <span class="pill" id="alertCount"></span></h2>
   <div id="alertBox"></div>
 </section>
 
 <footer>
-  <p>Read the <a href="explainer.html" target="_blank">economics explainer</a>.</p>
+  <p>Read the <a href="explainer.html" target="_blank">economics explainer</a> · data is a representative educational sample.</p>
 </footer>
 
+<div class="toast" id="toast"></div>
+
+<script src="/static/helpers.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>
