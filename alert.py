@@ -56,11 +56,17 @@ def compute_alerts(con, threshold: float = 5.0, clear: bool = True):
     return len(bulk)
 
 
-def latest_alerts(con, threshold: float = 5.0):
+def latest_alerts(con, threshold: float = 5.0, start: str = None, end: str = None):
     compute_alerts(con, threshold=threshold)
-    return con.execute(
-        "SELECT i.name, i.category, d.date, d.price, d.prev_price, "
-        "       ROUND(d.pct_change,1) AS pct "
-        "FROM alerts d JOIN items i ON i.id = d.item_id "
-        "ORDER BY d.pct_change DESC"
-    ).fetchall()
+    q = ("SELECT i.name, i.category, d.date, d.price, d.prev_price, "
+         "       ROUND(d.pct_change,1) AS pct "
+         "FROM alerts d JOIN items i ON i.id = d.item_id")
+    cond, params = [], []
+    if start:
+        cond.append("d.date >= ?"); params.append(start)
+    if end:
+        cond.append("d.date <= ?"); params.append(end)
+    if cond:
+        q += " WHERE " + " AND ".join(cond)
+    q += " ORDER BY d.pct_change DESC"
+    return con.execute(q, params).fetchall()
