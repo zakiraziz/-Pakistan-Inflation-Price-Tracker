@@ -15,10 +15,11 @@ reproducibly.
 | Requirement | Status |
 |---|---|
 | **Data pipeline runs reproducibly** | ✅ `seed.py` regenerates the same DB from `model.py`; `test_pipeline.py` verifies determinism |
-| **Charts render with filters** | ✅ Chart.js dashboard with date-range + category + item filters |
+| **Charts render with filters** | ✅ Chart.js dashboard with date-range presets, category + item filters, and a "Basket cost index" view |
 | **The explainer is clear and correct** | ✅ `explainer.md` (and `/static/explainer.html`) — stats computed from the data |
 
-Bonus: ✅ price-jump alerts (week-over-week threshold) · ✅ basket comparison.
+Bonus: ✅ price-jump alerts (week-over-week threshold) · ✅ basket comparison ·
+✅ one-click CSV export · ✅ "Update now" ingest button in the UI · ✅ live summary cards.
 
 ## Project layout
 
@@ -81,16 +82,23 @@ Run the checks:
 | `GET /` | dashboard |
 | `GET /api/items` | list tracked items |
 | `GET /api/series?start=&end=&items=` | filtered time-series (ISO dates, CSV item ids) |
-| `GET /api/alerts?threshold=5` | price-jump alerts (default: ≥5% week-over-week) |
-| `POST /ingest/next` | run the ingest job on demand |
+| `GET /api/index?start=&end=&items=` | equal-weight basket cost index (100 at range start) |
+| `GET /api/metrics?start=&end=&items=` | summary stats for the window (drives the dashboard cards) |
+| `GET /api/series.csv?...` | download the current view as CSV |
+| `GET /api/alerts?threshold=5&start=&end=` | price-jump alerts within the window |
+| `POST /ingest/next` | run the ingest job on demand (see the "Update now" button) |
 
 ## Dashboard
 
-- **Date filters** (From / To) default to the last 12 months.
+- **Date range** — quick presets (3M / 6M / 1Y / All) plus custom From/To pickers.
+- **Two views** via tabs: **Item prices** (line chart of each selected item) and
+  **Basket cost index** (whole-basket cost, indexed to 100 at the range start).
 - **Category + item filters** let you compare baskets (e.g. Grocery vs Energy).
-- Line chart renders all selected items; hover/zoom with the mouse.
-- Summary cards: total basket change, biggest riser, biggest fall.
-- Alerts panel lists items that jumped ≥ the chosen threshold in the latest week.
+- **Summary cards** — basket change, biggest riser, biggest fall, and scope.
+- **Alerts panel** — items that jumped ≥ the chosen threshold week-on-week, with the
+  largest jump highlighted (they respect the current date range).
+- **Update now (ingest)** — runs the ingest job and refreshes the charts.
+- **CSV export** — downloads the current view; the whole dashboard is responsive.
 
 ## Deploying
 

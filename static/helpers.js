@@ -23,8 +23,6 @@ function baseOptions() {
   };
 }
 
-function beforeEachRange() { return { plugins: { legend: { onClick: function () {} } } }; }
-
 function renderItemChart(canvas, full) {
   var names = Object.keys(full);
   var datasets = names.map(function (n, k) {
