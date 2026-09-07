@@ -325,7 +325,7 @@ def run_job():
     n, snap, counts = job.add_next_week(con, when, auto_approve=auto_approve)
     con.close()
     cache.clear()          # data changed -> invalidate cached API responses
-    logger.info("ingest run", extra={"counts": counts})
+    logger.info("ingest run: %s", counts)
     return jsonify({"inserted": n, "for_week": snap.isoformat(), "counts": counts})
 
 
