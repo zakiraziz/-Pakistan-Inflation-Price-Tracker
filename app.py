@@ -139,6 +139,94 @@ def api_metrics():
     })
 
 
+@app.route("/api/pivot")
+def api_pivot():
+    """Item x date matrix + equal-weight basket index for the window."""
+    start, end, ids = _parse_window()
+    con = db.connect()
+    if ids is None:
+        ids = [r["id"] for r in db.get_items(con)]
+    ph = ",".join("?" * len(ids))
+    q = ("SELECT i.name AS name, i.category AS category, i.unit AS unit, "
+         "       p.date AS date, p.price AS price "
+         "FROM prices p JOIN items i ON i.id = p.item_id "
+         "WHERE p.item_id IN ({})".format(ph))
+    params = list(ids)
+    if start:
+        q += " AND p.date >= ?"; params.append(start)
+    if end:
+        q += " AND p.date <= ?"; params.append(end)
+    q += " ORDER BY p.date"
+    rows = con.execute(q, params).fetchall()
+    con.close()
+
+    dates, seen, by = [], {}, {}
+    for r in rows:
+        if r["date"] not in seen:
+            seen[r["date"]] = 1
+            dates.append(r["date"])
+        by.setdefault(r["name"],
+                      {"category": r["category"], "unit": r["unit"], "prices": []}
+                      )["prices"].append(r["price"])
+
+    items_out = []
+    for name, d in by.items():
+        px = d["prices"]
+        first, last = px[0], px[-1]
+        items_out.append({
+            "name": name, "category": d["category"], "unit": d["unit"],
+            "first": first, "last": last,
+            "pct": round((last - first) / first * 100, 2) if first else 0.0,
+            "prices": px,
+        })
+
+    index = []
+    if dates and by:
+        total0 = sum(items_out[i]["prices"][0] for i in range(len(items_out)))
+        for i in range(len(dates)):
+            total = sum(items_out[j]["prices"][i] for j in range(len(items_out)))
+            index.append(round(total / total0 * 100, 2))
+
+    return jsonify({"dates": dates, "index": index, "items": items_out})
+
+
+@app.route("/api/inflation")
+def api_inflation():
+    """Headline inflation stats for the window (annualised, weekly, YoY)."""
+    start, end, ids = _parse_window()
+    rows = _series_between(start, end, ids)
+    if not rows:
+        return jsonify({"weeks": 0})
+    sums = {}
+    for r in rows:
+        sums[r["date"]] = sums.get(r["date"], 0.0) + r["price"]
+    dates = sorted(sums)
+    base = sums[dates[0]]
+    last_tot = sums[dates[-1]]
+    basket_pct = (last_tot - base) / base * 100
+    days = (len(dates) - 1) * 7
+    annualized = ((last_tot / base) ** (365.0 / days) - 1) * 100 if days > 0 else 0.0
+    avg_weekly = ((last_tot / base) ** (1.0 / max(1, len(dates) - 1)) - 1) * 100
+
+    from datetime import date as _date, timedelta
+    last_d = _date.fromisoformat(dates[-1])
+    target = last_d - timedelta(days=364)
+    yoy = None
+    for dt in dates:
+        if _date.fromisoformat(dt) >= target:
+            yoy = (last_tot / sums[dt] - 1) * 100
+            break
+    return jsonify({
+        "weeks": len(dates),
+        "first_date": dates[0],
+        "last_date": dates[-1],
+        "basket_pct": round(basket_pct, 2),
+        "annualized_pct": round(annualized, 2),
+        "avg_weekly_pct": round(avg_weekly, 2),
+        "yoy_pct": round(yoy, 2) if yoy is not None else None,
+    })
+
+
 @app.route("/api/series.csv")
 def api_series_csv():
     """Download the current view as CSV."""
@@ -190,4 +278,5 @@ def run_job():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5010, debug=True)
+    port = int(os.environ.get("PORT", 5010))
+    app.run(host="0.0.0.0", port=port, debug=True)

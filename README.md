@@ -19,7 +19,9 @@ reproducibly.
 | **The explainer is clear and correct** | ✅ `explainer.md` (and `/static/explainer.html`) — stats computed from the data |
 
 Bonus: ✅ price-jump alerts (week-over-week threshold) · ✅ basket comparison ·
-✅ one-click CSV export · ✅ "Update now" ingest button in the UI · ✅ live summary cards.
+✅ item search · ✅ one-click CSV export · ✅ "Update data" ingest button ·
+✅ live KPI cards (incl. annualized + year-over-year inflation) ·
+✅ Compare bar-chart view · ✅ Data table view.
 
 ## Project layout
 
@@ -83,22 +85,36 @@ Run the checks:
 | `GET /api/items` | list tracked items |
 | `GET /api/series?start=&end=&items=` | filtered time-series (ISO dates, CSV item ids) |
 | `GET /api/index?start=&end=&items=` | equal-weight basket cost index (100 at range start) |
-| `GET /api/metrics?start=&end=&items=` | summary stats for the window (drives the dashboard cards) |
+| `GET /api/metrics?start=&end=&items=` | summary stats for the window (drives the KPI cards) |
+| `GET /api/inflation?start=&end=&items=` | annualised / weekly / year-over-year inflation |
+| `GET /api/pivot?start=&end=&items=` | item × date matrix + basket index (Trends/Compare/Data) |
 | `GET /api/series.csv?...` | download the current view as CSV |
 | `GET /api/alerts?threshold=5&start=&end=` | price-jump alerts within the window |
-| `POST /ingest/next` | run the ingest job on demand (see the "Update now" button) |
+| `POST /ingest/next` | run the ingest job on demand (see the "Update data" button) |
 
 ## Dashboard
 
-- **Date range** — quick presets (3M / 6M / 1Y / All) plus custom From/To pickers.
-- **Two views** via tabs: **Item prices** (line chart of each selected item) and
-  **Basket cost index** (whole-basket cost, indexed to 100 at the range start).
-- **Category + item filters** let you compare baskets (e.g. Grocery vs Energy).
-- **Summary cards** — basket change, biggest riser, biggest fall, and scope.
-- **Alerts panel** — items that jumped ≥ the chosen threshold week-on-week, with the
-  largest jump highlighted (they respect the current date range).
-- **Update now (ingest)** — runs the ingest job and refreshes the charts.
-- **CSV export** — downloads the current view; the whole dashboard is responsive.
+A full responsive dashboard (Flask + SQLite + Chart.js, Inter font):
+
+- **Hero header** with a live "latest price" badge and an **Update data** ingest button.
+- **KPI cards** — Basket cost change, **Annualised inflation**, **Year-over-year**,
+  and **price-jump count** for the selected window.
+- **Three views (tabs):**
+  - **Trends** — line charts of each item's prices, or the whole-basket cost index.
+  - **Compare** — horizontal bar chart of % change since the range start (who rose most).
+  - **Data** — sortable table (start / latest / change per item).
+- **Controls** — date presets (3M / 6M / 1Y / All) + custom range, alert threshold, CSV export.
+- **Basket filters** — category chips, item checklist, and a live **search box**.
+- **Alerts panel** — items that jumped ≥ the threshold week-on-week, largest jump highlighted.
+- Loading spinners, friendly empty states, toasts, custom scrollbars, mobile layout.
+
+## Checking it works
+
+```bash
+.venv/Scripts/python test_pipeline.py   # pipeline unit tests (reproducible + alerts)
+.venv/Scripts/python test_web.py        # boots the real server, hits every route + HTML markers
+.venv/Scripts/python shot.py            # (optional) renders in headless Chrome + screenshot QA
+```
 
 ## Deploying
 

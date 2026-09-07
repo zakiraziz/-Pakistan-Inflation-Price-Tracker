@@ -5,3 +5,4 @@ data/*.db-journal
 .venv/
 venv/
 .DS_Store
+dashboard.png

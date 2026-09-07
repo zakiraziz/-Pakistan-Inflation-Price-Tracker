@@ -4,77 +4,90 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pakistan Inflation · Price Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" />
   <link rel="stylesheet" href="/static/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<header>
-  <h1>🇵🇰 Pakistan Inflation / Price Tracker</h1>
-  <p class="sub">Weekly prices for a basket of everyday goods · Flask + SQLite + Chart.js</p>
-  <button id="updateNow" class="btn ghost">↻ Update now (ingest)</button>
-</header>
-
-<section class="controls">
-  <div class="group">
-    <span class="label">Date range</span>
-    <div class="presets">
-      <button class="preset" data-months="3">3M</button>
-      <button class="preset" data-months="6">6M</button>
-      <button class="preset" data-months="12" data-active="1">1Y</button>
-      <button class="preset" data-all="1">All</button>
+<div class="page">
+  <header class="hero">
+    <div class="brand">
+      <div class="logo">₨</div>
+      <div>
+        <h1>Pakistan Inflation</h1>
+        <p class="sub">Weekly price tracker · basket of everyday goods</p>
+      </div>
     </div>
-    <div class="range">
-      <input type="date" id="start" aria-label="From" />
-      <span class="dash">→</span>
-      <input type="date" id="end" aria-label="To" />
+    <div class="hero-actions">
+      <span class="updated" id="updatedBadge">⟳ syncing…</span>
+      <button id="updateNow" class="btn ghost">↻ Update data</button>
     </div>
-  </div>
+  </header>
 
-  <div class="group">
-    <span class="label">Jump alert ≥</span>
-    <input type="number" id="threshold" value="5" min="1" max="100" step="1" class="num" /> %
-  </div>
+  <section class="controls card-line">
+    <div class="group">
+      <span class="label">Time range</span>
+      <div class="presets">
+        <button class="preset" data-months="3">3M</button>
+        <button class="preset" data-months="6">6M</button>
+        <button class="preset" data-months="12">1Y</button>
+        <button class="preset" data-all="1">All</button>
+      </div>
+      <div class="range">
+        <input type="date" id="start" aria-label="From" />
+        <span class="dash">→</span>
+        <input type="date" id="end" aria-label="To" />
+      </div>
+    </div>
 
-  <div class="group">
-    <button id="apply" class="btn">Apply</button>
-    <button id="export" class="btn ghost" title="Download CSV of this view">⤓ CSV</button>
-  </div>
-</section>
+    <div class="group">
+      <span class="label">Alert threshold</span>
+      <div class="thr"><input type="number" id="threshold" value="5" min="1" max="100" step="1" class="num" /> <span>% / wk</span></div>
+    </div>
 
-<section class="tabs">
-  <button data-view="items" class="tab on">📈 Item prices</button>
-  <button data-view="index" class="tab">🛒 Basket cost index</button>
-  <span class="info" id="infoLine" aria-live="polite"></span>
-</section>
+    <div class="group">
+      <span class="label">&nbsp;</span>
+      <div class="row2">
+        <button id="apply" class="btn">Apply</button>
+        <button id="export" class="btn ghost" title="Download CSV">⤓</button>
+      </div>
+    </div>
 
-<section class="filters">
-  <h2>Basket</h2>
-  <div class="category-filters" id="categoryFilters"></div>
-  <details open>
-    <summary>Choose items</summary>
-    <div class="item-list" id="itemList"></div>
-  </details>
-</section>
+    <div class="group grow">
+      <span class="label">Search basket</span>
+      <input type="text" id="search" class="num grow-in" placeholder="Filter items…" />
+    </div>
+  </section>
 
-<section class="cards" id="cards"></section>
+  <section class="kpis" id="kpis"></section>
 
-<section class="chart-wrap">
-  <canvas id="itemChart"></canvas>
-  <canvas id="indexChart" style="display:none"></canvas>
-  <p class="hint" id="chartHint"></p>
-</section>
+  <nav class="tabs">
+    <button data-view="trends" class="tab on">📈 Trends</button>
+    <button data-view="compare" class="tab">⚖ Compare</button>
+    <button data-view="data" class="tab">🗂 Data</button>
+    <span class="info" id="infoLine" aria-live="polite"></span>
+  </nav>
 
-<section class="alerts">
-  <h2>⚠️ Price-jump alerts <span class="pill" id="alertCount"></span></h2>
-  <div id="alertBox"></div>
-</section>
+  <section class="filters">
+    <div class="category-filters" id="categoryFilters"></div>
+    <details>
+      <summary>Choose items</summary>
+      <div class="item-list" id="itemList"></div>
+    </details>
+  </section>
 
-<footer>
-  <p>Read the <a href="explainer.html" target="_blank">economics explainer</a> · data is a representative educational sample.</p>
-</footer>
+  <section class="view" id="view"><div class="loading">Loading…</div></section>
+
+  <section class="alerts" id="alertsPanel"></section>
+
+  <footer>
+    <p>Read the <a href="explainer.html" target="_blank">economics explainer</a> ·
+       dataset is a representative educational sample · Flask + SQLite + Chart.js</p>
+  </footer>
+</div>
 
 <div class="toast" id="toast"></div>
-
 <script src="/static/helpers.js"></script>
 <script src="/static/app.js"></script>
 </body>
