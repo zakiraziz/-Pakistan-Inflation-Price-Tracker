@@ -18,16 +18,57 @@ then open  http://127.0.0.1:5010
 from __future__ import annotations
 
 import os
+import time
 
 from flask import Flask, jsonify, render_template_string, request
 
 import db
+import log
 from alert import latest_alerts
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
+# --- caching (flask-caching; swap CACHE_TYPE=RedisCache to use Redis) -------
+from flask_caching import Cache
+app.config["CACHE_TYPE"] = os.environ.get("CACHE_TYPE", "SimpleCache")
+app.config["CACHE_DEFAULT_TIMEOUT"] = int(os.environ.get("CACHE_TTL", 300))
+cache = Cache(app)
+
+# --- rate limiting (Flask-Limiter) ------------------------------------------
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+limiter = Limiter(get_remote_address, app=app,
+                  default_limits=[os.environ.get("RATE_LIMIT_DEFAULT", "300 per minute")],
+                  storage_uri=os.environ.get("RATE_LIMIT_STORAGE", "memory://"))
+write_limit = os.environ.get("RATE_LIMIT_WRITE", "60 per minute")
+
+logger = log.get_logger("app")
+
+# cached public endpoints (invalidate via cache.clear() on data change)
+CACHED_ENDPOINTS = ("/api/items", "/api/series", "/api/index", "/api/metrics",
+                    "/api/inflation", "/api/pivot", "/api/alerts")
+
 DEFAULT_START = "2025-07-01"
+STARTED_AT = time.time()
+
+
+@app.route("/healthz")
+def healthz():
+    ok, detail = True, {}
+    try:
+        con = db.connect()
+        detail["items"] = len(db.get_items(con))
+        row = con.execute("SELECT MAX(date) AS d, COUNT(*) AS c FROM prices "
+                          "WHERE status = ?", (db.STATUS_APPROVED,)).fetchone()
+        detail["latest_date"] = row["d"]
+        detail["approved_points"] = row["c"]
+        detail["pending_points"] = db.count_status(con, db.STATUS_PENDING)
+        con.close()
+    except Exception as exc:  # pragma: no cover - defensive
+        ok, detail["error"] = False, str(exc)
+    detail["uptime_seconds"] = round(time.time() - STARTED_AT, 1)
+    return jsonify({"status": "ok" if ok else "degraded", **detail}), (200 if ok else 503)
 
 
 @app.route("/")

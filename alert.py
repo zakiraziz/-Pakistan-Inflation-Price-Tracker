@@ -28,6 +28,7 @@ def compute_alerts(con, threshold: float = 5.0, clear: bool = True):
             SELECT id, item_id, date, price,
                    LAG(price) OVER (PARTITION BY item_id ORDER BY date) AS prev
             FROM prices
+            WHERE status = ?
         ),
         latest AS (
             SELECT * FROM (
@@ -40,7 +41,7 @@ def compute_alerts(con, threshold: float = 5.0, clear: bool = True):
         FROM latest
         WHERE prev IS NOT NULL AND (price - prev) * 100.0 / prev >= ?
         """,
-        (threshold,),
+        (db.STATUS_APPROVED, threshold),
     ).fetchall()
 
     bulk = [
