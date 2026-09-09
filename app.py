@@ -312,17 +312,79 @@ def api_alerts():
 
 
 @app.route("/ingest/next", methods=["POST"])
+@limiter.limit(write_limit)
 def run_job():
     import job
-    import model
     from datetime import date
     con = db.connect()
     when = date.today()
     if request.is_json and request.get_json(silent=True).get("date"):
         when = date.fromisoformat(request.get_json()["date"])
-    n, snap = job.add_next_week(con, when)
+    auto_approve = request.get_json(silent=True) is None or \
+        bool(request.get_json(silent=True).get("auto_approve", True))
+    n, snap, counts = job.add_next_week(con, when, auto_approve=auto_approve)
     con.close()
-    return jsonify({"inserted": n, "for_week": snap.isoformat()})
+    cache.clear()          # data changed -> invalidate cached API responses
+    logger.info("ingest run", extra={"counts": counts})
+    return jsonify({"inserted": n, "for_week": snap.isoformat(), "counts": counts})
+
+
+@app.route("/api/admin/pending")
+def admin_pending():
+    con = db.connect()
+    rows = db.pending_points(con)
+    con.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/approve", methods=["POST"])
+@limiter.limit(write_limit)
+def admin_approve():
+    """Approve pending price points: {"ids": [..]} or {"all": true}."""
+    payload = request.get_json(silent=True) or {}
+    con = db.connect()
+    if payload.get("all"):
+        n = con.execute("UPDATE prices SET status = ?, review_note = 'approved "
+                        "by admin' WHERE status = ?",
+                        (db.STATUS_APPROVED, db.STATUS_PENDING)).rowcount
+    else:
+        ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
+        n = 0
+        for pid in ids:
+            n += con.execute("UPDATE prices SET status = ?, "
+                             "review_note = 'approved by admin' "
+                             "WHERE id = ? AND status = ?",
+                             (db.STATUS_APPROVED, pid, db.STATUS_PENDING)).rowcount
+    con.commit()
+    con.close()
+    cache.clear()
+    logger.info("approved %s pending point(s)", n)
+    return jsonify({"approved": n})
+
+
+@app.route("/api/admin/reject", methods=["POST"])
+@limiter.limit(write_limit)
+def admin_reject():
+    """Reject pending price points so they never enter the index."""
+    payload = request.get_json(silent=True) or {}
+    con = db.connect()
+    if payload.get("all"):
+        n = con.execute("UPDATE prices SET status = ?, review_note = 'rejected "
+                        "by admin' WHERE status = ?",
+                        (db.STATUS_REJECTED, db.STATUS_PENDING)).rowcount
+    else:
+        ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
+        n = 0
+        for pid in ids:
+            n += con.execute("UPDATE prices SET status = ?, "
+                             "review_note = 'rejected by admin' "
+                             "WHERE id = ? AND status = ?",
+                             (db.STATUS_REJECTED, pid, db.STATUS_PENDING)).rowcount
+    con.commit()
+    con.close()
+    cache.clear()
+    logger.info("rejected %s pending point(s)", n)
+    return jsonify({"rejected": n})
 
 
 if __name__ == "__main__":
