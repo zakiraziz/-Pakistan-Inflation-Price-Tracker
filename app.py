@@ -78,6 +78,7 @@ def index():
 
 
 @app.route("/api/items")
+@cache.cached(query_string=True)
 def api_items():
     con = db.connect()
     rows = db.get_items(con)
@@ -98,15 +99,15 @@ def _parse_window():
     return start, end, ids
 
 
-def _series_between(start, end, ids):
+def _series_between(start, end, ids, status=db.STATUS_APPROVED):
     con = db.connect()
     if ids is None:
         ids = [r["id"] for r in db.get_items(con)]
     ph = ",".join("?" * len(ids))
     q = ("SELECT i.name AS name, p.date AS date, p.price AS price "
          "FROM prices p JOIN items i ON i.id = p.item_id "
-         "WHERE p.item_id IN ({})".format(ph))
-    params = list(ids)
+         "WHERE p.status = ? AND p.item_id IN ({})".format(ph))
+    params = [status, *ids]
     if start:
         q += " AND p.date >= ?"
         params.append(start)
@@ -120,6 +121,7 @@ def _series_between(start, end, ids):
 
 
 @app.route("/api/series")
+@cache.cached(query_string=True)
 def api_series():
     start, end, ids = _parse_window()
     rows = _series_between(start, end, ids)
@@ -129,6 +131,7 @@ def api_series():
 
 
 @app.route("/api/index")
+@cache.cached(query_string=True)
 def api_index():
     """Equal-weight basket cost index, normalised to 100 on the window start."""
     start, end, ids = _parse_window()
@@ -146,6 +149,7 @@ def api_index():
 
 
 @app.route("/api/metrics")
+@cache.cached(query_string=True)
 def api_metrics():
     """Summary stats for the selected window (drives the dashboard cards)."""
     start, end, ids = _parse_window()
@@ -181,6 +185,7 @@ def api_metrics():
 
 
 @app.route("/api/pivot")
+@cache.cached(query_string=True)
 def api_pivot():
     """Item x date matrix + equal-weight basket index for the window."""
     start, end, ids = _parse_window()
@@ -232,6 +237,7 @@ def api_pivot():
 
 
 @app.route("/api/inflation")
+@cache.cached(query_string=True)
 def api_inflation():
     """Headline inflation stats for the window (annualised, weekly, YoY)."""
     start, end, ids = _parse_window()
@@ -291,6 +297,7 @@ def api_series_csv():
 
 
 @app.route("/api/alerts")
+@cache.cached(query_string=True)
 def api_alerts():
     start, end, _ = _parse_window()
     threshold = float(request.args.get("threshold", 5.0))
