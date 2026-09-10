@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (ruff) + format check (black)
+        run: |
+          ruff check .
+          black --check .
+      - name: Type check (mypy)
+        run: mypy
+      - name: Seed + unit tests (with coverage)
+        run: |
+          python seed.py
+          pytest --cov --cov-fail-under=80
+      - name: Live web checks (boots the real server)
+        run: python test_web.py

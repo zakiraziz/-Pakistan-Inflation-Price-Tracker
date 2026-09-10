@@ -1,0 +1,31 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "shot.py", "scheduler.py", "test_pipeline.py", "test_web.py"]
+
+[tool.coverage.report]
+show_missing = true
+# target: 80%+ (see README "Checking it works")
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["data", ".venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["E501"]   # long lines are formatted by black
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+files = ["db.py", "validators.py", "model.py", "alert.py", "ingest/"]
