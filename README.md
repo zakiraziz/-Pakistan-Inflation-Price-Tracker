@@ -23,20 +23,117 @@ Bonus: ✅ price-jump alerts (week-over-week threshold) · ✅ basket comparison
 ✅ live KPI cards (incl. annualized + year-over-year inflation) ·
 ✅ Compare bar-chart view · ✅ Data table view.
 
+## Production readiness
+
+**Data provenance & approval workflow** — every price point stores *where it
+came from* and *how it was collected*:
+
+| Column | Meaning |
+|---|---|
+| `source` | which source produced it (`seed`, `csv`, `weekly-job`, `pbs-web`…) |
+| `method` | how it was fetched/parsed (`generator`, `csv-import`, `html/csv scrape`) |
+| `collected_at` | UTC timestamp of collection |
+| `status` | `approved` / `pending` / `rejected` |
+| `review_note` | why it was held (e.g. "suspicious +25% week-over-week") |
+
+`validators.classify()` decides the status: normal swings are auto-approved,
+implausible ones are held **pending** and are *excluded from every public
+endpoint* until a human approves or rejects them:
+
+```
+POST /ingest/next {"auto_approve": false}   # stage everything for review
+GET  /api/admin/pending                     # review queue
+POST /api/admin/approve {"ids":[..]} | {"all":true}
+POST /api/admin/reject  {"ids":[..]} | {"all":true}
+```
+
+Every batch is also written to the `ingestions` audit table
+(source, method, ran_at, counts) — so the index is fully reproducible and
+auditable.
+
+**Architecture**
+
+```mermaid
+flowchart LR
+  S[Sources<br/>seed · CSV · PBS scrape] --> V[validators<br/>sanity checks]
+  V --> P[ingest.pipeline<br/>provenance + status]
+  P --> DB[(items / prices /<br/>ingestions / alerts)]
+  P --> A[alert.py<br/>price-jump alerts]
+  SCH[scheduler.py<br/>APScheduler cron] --> P
+  J[job.py / POST /ingest/next] --> P
+  DB --> API[app.py<br/>cached + rate-limited API]
+  API --> UI[dashboard<br/>KPIs · Trends · Compare · Data]
+```
+
+**Caching, rate limiting, health & logging**
+
+- `flask-caching` caches the read APIs (SimpleCache by default; set
+  `CACHE_TYPE=RedisCache` + `REDIS_URL` to move to Redis). Cached responses
+  are invalidated on every ingest/approval, so data is never stale.
+- `flask-limiter` rate-limits reads (`RATE_LIMIT_DEFAULT`) and writes
+  (`RATE_LIMIT_WRITE`).
+- `GET /healthz` reports status, item count, latest approved date, pending
+  queue size and uptime (200 / 503) for uptime monitoring.
+- `log.py` emits JSON-lines logs (`LOG_LEVEL`, `JSON_LINES=0` for text).
+
+**Scheduling**
+
+```bash
+python scheduler.py --once   # one ingest run (CI-friendly)
+python scheduler.py          # long-running APScheduler (Sat 06:00 UTC)
+```
+
+In production run the scheduler as its own process/container (or use cron /
+GitHub Actions / Celery beat) rather than inside the web process.
+
+**Configuration (env vars)**
+
+| Var | Default | Purpose |
+|---|---|---|
+| `PORT` | `5010` | web port |
+| `CACHE_TYPE` / `CACHE_TTL` | `SimpleCache` / `300` | cache backend + TTL |
+| `RATE_LIMIT_DEFAULT` / `RATE_LIMIT_WRITE` | `300/min` / `60/min` | rate limits |
+| `LOG_LEVEL` / `JSON_LINES` | `INFO` / `1` | logging |
+
 ## Project layout
 
 ```
-model.py        # item definitions + deterministic price generator (data source)
-db.py           # SQLite schema (items, prices, alerts)
-seed.py         # ingest step: rebuild the DB from the model (reproducible)
-job.py          # ingest job: add the next week of data, recompute alerts (idempotent)
-alert.py        # price-jump alert logic
-analyze.py      # headline stats (used by the explainer)
-app.py          # Flask API + serves the dashboard
-test_pipeline.py  # dependency-free end-to-end tests
-static/         # dashboard (Chart.js) + standalone explainer page
-explainer.md    # the written economics explainer
+model.py          # item definitions + deterministic price generator (data source)
+db.py             # storage layer: items, prices (+ provenance/status), ingestions, alerts
+validators.py     # sanity checks -> approved / pending / rejected
+ingest/           # sources (SeedSource, CSVSource, PBSWebSource) + pipeline
+seed.py           # ingest step: rebuild an approved baseline (reproducible)
+job.py            # weekly ingest job (validated pipeline + alerts), idempotent
+scheduler.py      # APScheduler cron wrapper for the ingest job
+alert.py          # price-jump alert logic (approved data only)
+analyze.py        # headline stats (used by the explainer)
+app.py            # Flask API: cached, rate-limited, /healthz, admin approval
+log.py            # structured (JSON) logging
+tests/            # pytest suite (fixtures, validators, pipeline, app/caching)
+test_pipeline.py  # dependency-free end-to-end pipeline tests
+test_web.py       # boots the real server and checks every route
+shot.py           # headless-Chrome render QA (screenshot + DOM assertions)
+static/           # dashboard (Chart.js) + standalone explainer page
+explainer.md      # the written economics explainer
+pyproject.toml    # pytest / coverage / ruff / black / mypy config
 ```
+
+## Staged roadmap (honest status)
+
+Done and verified in this repo: provenance + approval workflow, validated
+ingestion pipeline (CSV + generator sources), APScheduler scheduling, caching
+with invalidation, rate limiting, `/healthz`, structured logging, pytest +
+coverage, CI config, lint/format/type config, pre-commit.
+
+Needs infrastructure not present here (documented, designed for, not yet run):
+- **Postgres + Alembic migrations** — the DDL is Postgres-compatible; provision
+  a Postgres, point `DATABASE_URL` at it, and introduce Alembic as the schema
+  manager (current code still self-migrates via `init_db()` for SQLite).
+- **Redis cache backend** — set `CACHE_TYPE=RedisCache` (+ `REDIS_URL`).
+- **Live PBS scraping** — `ingest/sources.py:PBSWebSource` is the scaffold;
+  wire an endpoint with the publisher's permission + network access.
+- **Forecasting / STL / change-point detection** and **Docker + deploy** are
+  the next polish steps on this foundation.
 
 ## Quick start
 
@@ -111,10 +208,16 @@ A full responsive dashboard (Flask + SQLite + Chart.js, Inter font):
 ## Checking it works
 
 ```bash
-.venv/Scripts/python test_pipeline.py   # pipeline unit tests (reproducible + alerts)
-.venv/Scripts/python test_web.py        # boots the real server, hits every route + HTML markers
-.venv/Scripts/python shot.py            # (optional) renders in headless Chrome + screenshot QA
+python seed.py                       # rebuild an approved baseline
+pytest --cov --cov-fail-under=80     # unit + integration tests with coverage
+python test_pipeline.py              # dependency-free pipeline checks
+python test_web.py                   # boots the real server, hits every route
+python scheduler.py --once           # one real ingestion run
+python shot.py                       # (optional) headless-Chrome render QA
 ```
+
+CI (`.github/workflows/ci.yml`) runs lint → format check → type check →
+seed → tests with coverage → live web checks on every push.
 
 ## Deploying
 
