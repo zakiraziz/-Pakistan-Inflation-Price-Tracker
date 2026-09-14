@@ -25,32 +25,52 @@ from flask import Flask, jsonify, render_template_string, request
 import db
 import log
 from alert import latest_alerts
+from core.config import settings
+from core.security import install
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder="static", static_url_path="/static")
+app.config["FORCE_HTTPS"] = settings.force_https
 
-# --- caching (flask-caching; swap CACHE_TYPE=RedisCache to use Redis) -------
+# --- caching (flask-caching; CACHE_TYPE=RedisCache to move to Redis) --------
 from flask_caching import Cache
-app.config["CACHE_TYPE"] = os.environ.get("CACHE_TYPE", "SimpleCache")
-app.config["CACHE_DEFAULT_TIMEOUT"] = int(os.environ.get("CACHE_TTL", 300))
+
+app.config["CACHE_TYPE"] = settings.cache_type
+app.config["CACHE_DEFAULT_TIMEOUT"] = settings.cache_ttl
+if settings.redis_url:
+    app.config.setdefault("CACHE_REDIS_URL", settings.redis_url)
 cache = Cache(app)
 
 # --- rate limiting (Flask-Limiter) ------------------------------------------
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
 limiter = Limiter(get_remote_address, app=app,
-                  default_limits=[os.environ.get("RATE_LIMIT_DEFAULT", "300 per minute")],
-                  storage_uri=os.environ.get("RATE_LIMIT_STORAGE", "memory://"))
-write_limit = os.environ.get("RATE_LIMIT_WRITE", "60 per minute")
+                  default_limits=[settings.rate_limit_default],
+                  storage_uri=settings.rate_limit_storage)
+write_limit = settings.rate_limit_write
 
+install(app)          # security headers + structured error handling
 logger = log.get_logger("app")
-
-# cached public endpoints (invalidate via cache.clear() on data change)
-CACHED_ENDPOINTS = ("/api/items", "/api/series", "/api/index", "/api/metrics",
-                    "/api/inflation", "/api/pivot", "/api/alerts")
 
 DEFAULT_START = "2025-07-01"
 STARTED_AT = time.time()
+
+
+@app.route("/readyz")
+def readyz():
+    """Readiness: the app can serve data (schema present, has approved rows)."""
+    try:
+        con = db.connect()
+        con.execute("SELECT 1 FROM sqlite_master LIMIT 1")
+        approved = con.execute("SELECT COUNT(*) AS c FROM prices "
+                               "WHERE status = ?", (db.STATUS_APPROVED,)).fetchone()["c"]
+        con.close()
+        ready = approved > 0
+        return jsonify({"status": "ready" if ready else "not_ready",
+                        "approved_points": approved}), (200 if ready else 503)
+    except Exception as exc:  # pragma: no cover - defensive
+        return jsonify({"status": "not_ready", "error": str(exc)}), 503
 
 
 @app.route("/healthz")
@@ -74,6 +94,14 @@ def healthz():
 @app.route("/")
 def index():
     with open(os.path.join(BASE_DIR, "static", "index.html"), encoding="utf-8") as f:
+        return render_template_string(f.read())
+
+
+@app.route("/methodology")
+def methodology():
+    """Render the index methodology (source: docs/methodology.md)."""
+    with open(os.path.join(BASE_DIR, "static", "methodology.html"),
+              encoding="utf-8") as f:
         return render_template_string(f.read())
 
 
@@ -388,5 +416,6 @@ def admin_reject():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5010))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    # Debug mode is opt-in (FLASK_DEBUG=1); never on by default.
+    app.run(host="0.0.0.0", port=settings.port,
+            debug=os.environ.get("FLASK_DEBUG") == "1")

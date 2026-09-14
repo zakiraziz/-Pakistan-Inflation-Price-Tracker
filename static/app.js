@@ -3,69 +3,130 @@
   var items = [], selected = new Set(), activeCats = new Set();
   var tab = "trends", trendSub = "items", threshold = 5, start = "", end = "";
   var pivot = { dates: [], index: [], items: [] };
-  var itemRows = [];
+  var itemRows = [], reqId = 0;
+  var loading = false;
 
-  function setStartEnd(s, e) { start = s; end = e; el("start").value = s || ""; el("end").value = e || ""; markPreset(); }
+  function setStartEnd(s, e) { start = s; end = e;
+    el("start").value = s || ""; el("end").value = e || ""; markPreset(); }
   function markPreset() {
     document.querySelectorAll(".preset").forEach(function (b) {
       var d = b.dataset;
-      var on = (d.all && start === "") || (d.months && start === monthsAgo(Number(d.months)));
+      var on = (d.all && start === "") ||
+               (d.months && start === monthsAgo(Number(d.months)));
       b.classList.toggle("on", on);
     });
   }
   function query() {
-    return "?start=" + (start || "") + "&end=" + (end || "") + "&items=" + Array.from(selected).join(",");
+    return "?start=" + (start || "") + "&end=" + (end || "") +
+           "&items=" + Array.from(selected).join(",");
+  }
+  function getJSON(url, retries) {
+    retries = retries || 1;
+    var lastErr;
+    return fetch(url, { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status + " " + r.statusText);
+        return r.json();
+      })
+      .catch(function (err) {
+        lastErr = err;
+        if (retries > 0) return getJSON(url, retries - 1);
+        throw lastErr;
+      });
   }
 
-  function loadItems() {
-    fetch("/api/items").then(function (r) { return r.json(); }).then(function (data) {
-      items = data; var cats = [], seen = {};
-      data.forEach(function (i) {
-        if (!seen[i.category]) { seen[i.category] = 1; cats.push(i.category); }
-        selected.add(i.id); activeCats.add(i.category);
+  function load() {
+    if (loading) return;
+    loading = true;
+    reqId++;
+    var thisReq = reqId;
+    renderSkeletons(el("kpis"), el("view"));
+    var base = "/api/metrics" + query();
+    var pivotUrl = "/api/pivot" + query();
+    var alertsUrl = "/api/alerts?threshold=" + threshold + query();
+    Promise.all([getJSON(base), getJSON(pivotUrl), getJSON(alertsUrl)])
+      .then(function (res) {
+        if (thisReq !== reqId) return;
+        var metrics = res[0], p = res[1], alerts = res[2];
+        pivot = p || { dates: [], index: [], items: [] };
+        renderCards(el("kpis"), metrics);
+        renderTab();
+        renderAlerts(el("alertsPanel"), alerts);
+        renderInfo(metrics);
+        loading = false;
+      }).catch(function (err) {
+        if (thisReq !== reqId) return;
+        renderError(el("view"), err.message || "Could not load data");
+        loading = false;
       });
-      var catBox = el("categoryFilters");
-      cats.forEach(function (c) {
-        var span = document.createElement("span");
-        span.textContent = c; span.className = "on";
-        span.addEventListener("click", function () { toggleCategory(c, span); });
-        catBox.appendChild(span);
-      });
-      data.forEach(function (i) {
-        var label = document.createElement("label");
-        label.dataset.name = i.name.toLowerCase();
-        var cb = document.createElement("input");
-        cb.type = "checkbox"; cb.checked = true; cb.dataset.id = i.id;
-        cb.addEventListener("change", function (e) {
-          e.target.checked ? selected.add(i.id) : selected.delete(i.id);
-          load();
-        });
-        var txt = document.createElement("span");
-        txt.textContent = i.name + " · " + i.unit;
-        label.append(cb, txt); el("itemList").appendChild(label);
-        itemRows.push({ id: i.id, label: label });
-      });
-      el("search").addEventListener("input", function (e) { applySearch(e.target.value); });
-      setStartEnd(monthsAgo(12), todayISO()); load();
-    });
   }
 
-  function applySearch(q) {
-    var s = (q || "").toLowerCase();
-    itemRows.forEach(function (r) { r.label.style.display = (s && r.label.dataset.name.indexOf(s) < 0) ? "none" : ""; });
+  function renderCards(kpiEl, m) {
+    if (!m || m.count == null) { kpiEl.innerHTML = ""; return; }
+    var basketPct = m.basket_pct != null ? m.basket_pct : 0;
+    var riser = m.biggest_riser || null;
+    var faller = m.biggest_faller || null;
+    var cards = [
+      { label: "Basket change",
+        value: pct(basketPct),
+        sub: money(m.start_total) + " \u2192 " + money(m.end_total),
+        cls: pctCls(basketPct) },
+      { label: "Items in view",
+        value: String(m.count),
+        sub: m.weeks + " weekly observations",
+        cls: "" },
+      { label: "Biggest riser",
+        value: esc(riser ? riser.name : "\u2014"),
+        sub: riser ? pct(riser.pct) : "",
+        cls: "up" },
+      { label: "Biggest faller",
+        value: esc(faller ? faller.name : "\u2014"),
+        sub: faller ? pct(faller.pct) : "",
+        cls: "down" },
+    ];
+    kpiEl.innerHTML = cards.map(function (c) {
+      return '<div class="kpi">' +
+        '<span class="kpi-label">' + c.label + '</span>' +
+        '<span class="kpi-value' + (c.cls ? ' ' + c.cls : '') + '">' + c.value + '</span>' +
+        '<span class="kpi-sub">' + c.sub + '</span>' +
+      '</div>';
+    }).join("");
   }
 
-  function toggleCategory(cat, span) {
-    if (activeCats.has(cat)) { activeCats.delete(cat); span.className = "";
-      items.forEach(function (i) { if (i.category === cat) selected.delete(i.id); });
-    } else { activeCats.add(cat); span.className = "on";
-      items.forEach(function (i) { if (i.category === cat) selected.add(i.id); });
+  function renderInfo(m) {
+    var elInfo = el("infoLine");
+    if (!m || m.count == null) { elInfo.textContent = ""; return; }
+    var rng = (m.first_date && m.last_date) ? m.first_date + " → " + m.last_date : "no data";
+    elInfo.textContent = m.count + " items · " + m.weeks + " weeks · " + rng;
+  }
+
+  function renderAlerts(panel, alerts) {
+    if (!alerts || alerts.length === 0) {
+      panel.innerHTML =
+        '<section class="alerts">' +
+        '<div class="state" style="border-style:solid"><span class="icon">' + ICONS.check + '</span>' +
+        '<span class="title">No alerts</span>' +
+        '<span>No price moved more than ' + threshold + '% in the selected window.</span></div>' +
+        '</section>';
+      return;
     }
-    document.querySelectorAll("#itemList input").forEach(function (cb) {
-      var it = items.find(function (i) { return i.id == cb.dataset.id; });
-      cb.checked = selected.has(it.id);
-    });
-    load();
+    var top = alerts[0];
+    var chips = alerts.slice().map(function (a) {
+      return '<div class="alert-chip">' +
+        '<span class="al-name">' + esc(a.name) + ' <span class="al-cat">· ' + esc(a.category) + '</span></span>' +
+        '<span class="al-price">' + money(a.price) + '</span>' +
+        '<span class="al-date">' + esc(a.date) + '</span>' +
+        '<span class="al-pct">' + pct(a.pct) + ' vs ' + money(a.prev_price) + '</span>' +
+      '</div>';
+    }).join("");
+    panel.innerHTML =
+      '<section class="alerts" aria-live="polite">' +
+      '<h2><span>Alerts</span><span class="pill">' + alerts.length + '</span></h2>' +
+      '<div class="alert-top">' +
+        '<span class="icon">' + ICONS.alert + '</span>' +
+        '<span>Largest jump in this window: <strong>' + esc(top.name) +
+        '</strong> ' + pct(top.pct) + ' (' + esc(top.date) + ', ' + money(top.price) + ')</span>' +
+      '</div>' + chips + '</section>';
   }
 
   function renderTab() {
@@ -76,64 +137,104 @@
     else renderData(con, pivot);
   }
 
-  function load() {
-    if (!selected.size) { el("view").innerHTML = spinBox("Select at least one item — open the Basket panel."); return; }
-    el("view").innerHTML = spinBox("Loading data…");
-    var ids = query();
-    Promise.all([
-      fetch("/api/pivot" + ids).then(r => r.json()),
-      fetch("/api/metrics" + ids).then(r => r.json()),
-      fetch("/api/inflation" + ids).then(r => r.json()),
-      fetch("/api/alerts" + ids + "&threshold=" + threshold).then(r => r.json())
-    ]).then(function (res) {
-      pivot = res[0]; var metrics = res[1], infl = res[2], alerts = res[3];
-      if (!pivot.items.length) {
-        el("view").innerHTML = spinBox("No data in this range — widen it or add items.");
-        el("kpis").innerHTML = ""; renderAlerts(el("alertsPanel"), [], threshold);
-        el("infoLine").textContent = "No data"; return;
-      }
-      renderKPIs(el("kpis"), metrics, infl, alerts);
-      renderAlerts(el("alertsPanel"), alerts, threshold);
-      el("infoLine").textContent = pivot.items.length + " items · " + pivot.dates.length + " weekly points";
-      el("updatedBadge").textContent = "latest price " + pivot.dates[pivot.dates.length - 1];
-      renderTab();
-    }).catch(function () {
-      el("view").innerHTML = spinBox("Could not reach the API — is the server running?");
-    });
-  }
-  function updateNow() {
-    var btn = el("updateNow");
-    btn.disabled = true; btn.textContent = "Updating…";
-    fetch("/ingest/next", { method: "POST" }).then(function (r) { return r.json(); }).then(function (j) {
-      toast(j.inserted ? "✓ Ingested " + j.inserted + " new prices (week of " + j.for_week + ")" : "Already up to date.");
-      btn.disabled = false; btn.textContent = "↻ Update data"; load();
-    }).catch(function () { toast("Update failed — is the server running?"); btn.disabled = false; btn.textContent = "↻ Update data"; });
-  }
-
-  function exportCSV() {
-    var a = document.createElement("a");
-    a.href = "/api/series.csv" + query(); a.download = "prices.csv";
-    document.body.appendChild(a); a.click(); a.remove(); toast("Downloading CSV…");
-  }
-
-  document.querySelectorAll(".preset").forEach(function (b) {
-    b.addEventListener("click", function () {
-      b.dataset.all ? setStartEnd("", "") : setStartEnd(monthsAgo(Number(b.dataset.months)), todayISO());
+  function wire() {
+    el("apply").addEventListener("click", function () {
+      var s = el("start").value, e = el("end").value;
+      if (s && e && s > e) { toast("Start date must be before end date"); return; }
+      setStartEnd(s || start, e || end);
       load();
     });
-  });
-  document.querySelectorAll(".tab").forEach(function (t) {
-    t.addEventListener("click", function () {
-      tab = t.dataset.view;
-      document.querySelectorAll(".tab").forEach(function (x) { x.className = "tab" + (x === t ? " on" : ""); });
-      renderTab();
+    el("threshold").addEventListener("change", function () {
+      threshold = thresholdVal();
+      load();
     });
-  });
-  el("apply").addEventListener("click", function () {
-    start = el("start").value; end = el("end").value;
-    threshold = Number(el("threshold").value) || 5; markPreset(); load();
-  });
-  el("updateNow").addEventListener("click", updateNow);
-  el("export").addEventListener("click", exportCSV);
-  loadItems();
+    var tabs = document.querySelectorAll(".tab");
+    for (var i = 0; i < tabs.length; i++) {
+      (function (btn) {
+        btn.addEventListener("click", function () {
+          tab = btn.dataset.view;
+          for (var j = 0; j < tabs.length; j++) {
+            tabs[j].classList.remove("on");
+            tabs[j].setAttribute("aria-selected", "false");
+          }
+          btn.classList.add("on");
+          btn.setAttribute("aria-selected", "true");
+          renderTab();
+        });
+      })(tabs[i]);
+    }
+    var presets = document.querySelectorAll(".preset");
+    for (var k = 0; k < presets.length; k++) {
+      (function (b) {
+        b.addEventListener("click", function () {
+          var d = b.dataset;
+          if (d.all) setStartEnd("", "");
+          else if (d.months) setStartEnd(monthsAgo(Number(d.months)), "");
+          load();
+        });
+      })(presets[k]);
+    }
+    el("export").addEventListener("click", function () {
+      var csvUrl = "/api/series.csv" + query();
+      var a = document.createElement("a");
+      a.href = csvUrl;
+      a.download = "pakistan-prices_" + (start || "all") + ".csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+    el("updateNow").addEventListener("click", function () {
+      runUpdate();
+    });
+  }
+
+  function runUpdate() {
+    var btn = el("updateNow");
+    var badge = el("updatedBadge");
+    var inner = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg> Updating\u2026';
+    badge.textContent = "Updating\u2026";
+    fetch("/ingest/next", { method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ auto_approve: true }) })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.counts && data.counts.pending) {
+          toast("Ingested " + data.inserted + " point(s); " +
+                data.counts.pending + " pending review");
+        } else {
+          toast("Updated: " + data.inserted + " new point(s)");
+        }
+        badge.textContent = "Updated " + (data.for_week || "");
+        load();
+      })
+      .catch(function (err) {
+        toast("Update failed: " + (err.message || "unknown error"));
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.innerHTML = inner;
+      });
+  }
+
+  function toast(msg) {
+    var t = el("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    if (toast._t) clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.classList.remove("show"); }, 3200);
+  }
+
+  function init() {
+    wire();
+    loadItems();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

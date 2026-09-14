@@ -28,3 +28,12 @@ def seeded_db(tmp_db):
     con, path = tmp_db
     seed.load(con)
     yield con, path
+
+
+@pytest.fixture()
+def client(seeded_db):
+    """Flask test client wired to the isolated seeded database."""
+    import app as app_mod
+    app_mod.app.config["TESTING"] = True
+    with app_mod.app.test_client() as c:
+        yield c
