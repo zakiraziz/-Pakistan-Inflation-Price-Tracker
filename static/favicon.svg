@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pakistan flag: white hoist stripe, green field, white crescent + star. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img"
+     aria-label="Pakistan Inflation Price Tracker">
+  <rect width="32" height="32" rx="7" fill="#046a38"/>
+  <rect x="0" y="0" width="8" height="32" rx="7" fill="#ffffff"/>
+  <rect x="4" y="0" width="4" height="32" fill="#ffffff"/>
+  <path d="M22.4 8.6a7.6 7.6 0 1 0 0 14.8 9.2 9.2 0 1 1 0-14.8z" fill="#ffffff"/>
+  <path d="M25.6 12.2l1.1 2.9 3 .2-2.3 1.9.8 2.9-2.6-1.6-2.6 1.6.8-2.9-2.3-1.9 3-.2z"
+        fill="#ffffff"/>
+</svg>

@@ -16,23 +16,50 @@ function check(label, cond, extra) {
 }
 
 /* ---------- minimal DOM -------------------------------------------------- */
-function mkEl(id, cls, dataset) {
-  return {
-    id: id || "", innerHTML: "", textContent: "", value: "",
-    className: cls || "", dataset: dataset || {}, disabled: false,
-    classList: { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); },
-                 toggle(c, on) { on ? this._s.add(c) : this._s.delete(c); },
-                 contains(c) { return this._s.has(c); } },
-    _h: {}, _appended: "",
-    addEventListener(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); },
-    setAttribute(k, v) { this._attrs = this._attrs || {}; this._attrs[k] = v; },
-    getAttribute(k) { return (this._attrs || {})[k]; },
-    fire(ev) { (this._h[ev] || []).forEach((f) => f({})); },
-    appendChild(c) { this._appended += (c.innerHTML || c.textContent || ""); },
-    querySelectorAll() { return { forEach() {} }; },
-    remove() {}, click() {},
-  };
+function serialize(n) {
+  if (n.nodeType === 3) return n._text;
+  var attrs = Object.entries(n._attrs || {}).map(function (kv) {
+    return " " + kv[0] + '="' + kv[1] + '"';
+  }).join("");
+  var cls = n.className ? ' class="' + n.className + '"' : "";
+  var id = n.id ? ' id="' + n.id + '"' : "";
+  return "<" + n.tag + id + cls + attrs + ">" + (n._html || "") +
+    n.children.map(serialize).join("") + (n._text || "") + "</" + n.tag + ">";
 }
+
+class El {
+  constructor(tag, id, cls, dataset) {
+    this.tag = tag || "div"; this.id = id || ""; this.className = cls || "";
+    this.dataset = dataset || {}; this.nodeType = 1;
+    this.value = ""; this.checked = false; this.disabled = false;
+    this._html = ""; this._text = ""; this.children = []; this._attrs = {}; this._h = {};
+    this.classList = {
+      _s: new Set(),
+      add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); },
+      toggle(c, on) { on ? this._s.add(c) : this._s.delete(c); },
+      contains(c) { return this._s.has(c); },
+    };
+  }
+  set innerHTML(v) { this._html = v; this.children = []; this._text = ""; }
+  get innerHTML() {
+    return (this._html || "") + this.children.map(serialize).join("") + (this._text || "");
+  }
+  set textContent(v) { this._text = String(v); this.children = []; this._html = ""; }
+  get textContent() {
+    return (this._text || "") + this.children.map(function (c) {
+      return c.nodeType === 3 ? c._text : c.textContent;
+    }).join("") + (this._html || "");
+  }
+  appendChild(c) { this.children.push(c); return c; }
+  setAttribute(k, v) { this._attrs[k] = v; }
+  getAttribute(k) { return this._attrs[k]; }
+  addEventListener(ev, fn) { (this._h[ev] = this._h[ev] || []).push(fn); }
+  fire(ev) { (this._h[ev] || []).forEach(function (f) { f({ preventDefault() {} }); }); }
+  querySelectorAll() { return { forEach() {} }; }
+  remove() {} click() {}
+}
+function mkEl(id, cls, dataset) { return new El("div", id, cls, dataset); }
+function mkText(t) { return { nodeType: 3, _text: t }; }
 
 const byId = {};
 ["kpis", "view", "alertsPanel", "itemList", "categoryFilters", "search", "start",
@@ -54,7 +81,8 @@ const document = {
     if (sel === ".preset") return presets;
     return { forEach() {} };
   },
-  createElement: () => mkEl(""),
+  createElement: (tag) => new El(tag),
+  createTextNode: (t) => mkText(t),
   addEventListener() {},
   body: mkEl("body"),
 };

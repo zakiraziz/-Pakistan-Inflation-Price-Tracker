@@ -1,7 +1,7 @@
 /* ==========================================================================
    Design system — Pakistan Inflation / Price Tracker
-   Tokens: 4/8/12/16/24/32 spacing · 12–28px type scale · one accent,
-   three greys. Flat surfaces, 1px borders, generous whitespace.
+   Tokens: 4/8/12/16/24/32 spacing · 12–28px type scale · Pakistan flag
+   green + white palette, three greys. Flat surfaces, 1px borders, whitespace.
    ========================================================================== */
 :root {
   /* spacing scale (4 / 8 / 12 / 16 / 24 / 32 / 48) */
@@ -13,20 +13,20 @@
   --fs-xl: 18px; --fs-2xl: 22px; --fs-3xl: 28px;
   --fw-400: 400; --fw-500: 500; --fw-600: 600; --fw-700: 700;
 
-  /* colour — one accent, three greys */
-  --bg: #f6f7f9;
+  /* colour — Pakistan flag palette: green + white, one accent, three greys */
+  --bg: #f4f7f5;
   --surface: #ffffff;
-  --surface-2: #f1f3f5;
-  --border: #e3e6ea;
-  --border-strong: #cdd3da;
-  --ink: #17181c;
-  --muted: #5c6470;
-  --faint: #8b929c;
-  --accent: #b45309;        /* burnt saffron */
-  --accent-strong: #92400e;
-  --accent-soft: #fdf3e7;
+  --surface-2: #edf3ef;
+  --border: #dce6e0;
+  --border-strong: #c1d0c7;
+  --ink: #12211a;
+  --muted: #4f5f57;
+  --faint: #78877e;
+  --accent: #046a38;        /* Pakistan flag green */
+  --accent-strong: #01411c; /* deep flag green (hoist) */
+  --accent-soft: #e9f4ee;
   --up: #c2410c;            /* price rises (colorblind-safe vermillion) */
-  --down: #0a7d4f;          /* price falls (colorblind-safe green) */
+  --down: #009e73;          /* price falls (green) */
   --danger-soft: #fdf0ee;
 
   --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
@@ -43,6 +43,11 @@ body {
   color: var(--ink); background: var(--bg);
   -webkit-font-smoothing: antialiased;
 }
+/* flag band — white hoist stripe + green field across the top of the page */
+body::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 5px;
+  background: linear-gradient(90deg, #ffffff 0 25%, var(--accent) 25% 100%);
+  border-bottom: 1px solid var(--border); z-index: 70; }
+
 h1, h2, h3 { margin: 0; font-weight: var(--fw-700); letter-spacing: -0.01em; }
 p { margin: 0; }
 a { color: var(--accent); text-decoration: none; }
@@ -60,10 +65,19 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
 .page { max-width: 1080px; margin: 0 auto; padding: var(--s6) var(--s5) var(--s7); }
 
 /* ---------- hero ---------- */
-.hero { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
-.logo { width: 44px; height: 44px; border-radius: var(--r-md);
-  display: grid; place-items: center; background: var(--accent);
-  color: #fff; font-size: var(--fs-2xl); font-weight: var(--fw-700); }
+.hero { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent); border-radius: var(--r-lg);
+  padding: var(--s4) var(--s5); box-shadow: var(--shadow); }
+.logo { position: relative; width: 44px; height: 44px; border-radius: var(--r-md);
+  display: grid; place-items: center;
+  background: linear-gradient(150deg, var(--accent), var(--accent-strong));
+  color: #fff; font-size: var(--fs-2xl); font-weight: var(--fw-700);
+  box-shadow: 0 1px 3px rgba(1,65,28,.3); }
+.logo::after { content: ""; position: absolute; top: 6px; right: 6px;
+  width: 10px; height: 10px; background: #fff;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 .brand h1 { font-size: var(--fs-2xl); }
 .brand .sub { color: var(--muted); font-size: var(--fs-md); margin-top: 2px; }
 .hero-actions { margin-left: auto; display: flex; align-items: center;
