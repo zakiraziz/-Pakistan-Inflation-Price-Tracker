@@ -415,6 +415,4 @@ else:
     log("All checks passed.")
 log("=" * 62)
 
-sys.exit(2 if _FAIL else 0)
-
 sys.exit(0 if _FAIL == 0 else 2)

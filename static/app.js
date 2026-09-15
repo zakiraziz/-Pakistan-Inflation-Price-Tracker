@@ -3,8 +3,7 @@
   var items = [], selected = new Set(), activeCats = new Set();
   var tab = "trends", trendSub = "items", threshold = 5, start = "", end = "";
   var pivot = { dates: [], index: [], items: [] };
-  var itemRows = [], reqId = 0;
-  var loading = false;
+  var reqId = 0;
 
   function setStartEnd(s, e) { start = s; end = e;
     el("start").value = s || ""; el("end").value = e || ""; markPreset(); }
@@ -36,14 +35,16 @@
   }
 
   function load() {
-    if (loading) return;
-    loading = true;
+    /* Every call takes a new request id, so a slower earlier response can never
+       overwrite a newer one - and rapid clicks are never silently dropped. */
     reqId++;
     var thisReq = reqId;
     renderSkeletons(el("kpis"), el("view"));
     var base = "/api/metrics" + query();
     var pivotUrl = "/api/pivot" + query();
-    var alertsUrl = "/api/alerts?threshold=" + threshold + query();
+    /* query() already starts with "?", so threshold must be appended with "&" -
+       "/api/alerts?threshold=5" + "?start=..." would 500 the endpoint. */
+    var alertsUrl = "/api/alerts" + query() + "&threshold=" + threshold;
     Promise.all([getJSON(base), getJSON(pivotUrl), getJSON(alertsUrl)])
       .then(function (res) {
         if (thisReq !== reqId) return;
@@ -53,11 +54,10 @@
         renderTab();
         renderAlerts(el("alertsPanel"), alerts);
         renderInfo(metrics);
-        loading = false;
+        refreshItems();        /* now we know the % change for each item */
       }).catch(function (err) {
         if (thisReq !== reqId) return;
         renderError(el("view"), err.message || "Could not load data");
-        loading = false;
       });
   }
 
@@ -95,9 +95,16 @@
 
   function renderInfo(m) {
     var elInfo = el("infoLine");
-    if (!m || m.count == null) { elInfo.textContent = ""; return; }
+    var badge = el("updatedBadge");
+    if (!m || m.count == null) {
+      elInfo.textContent = "";
+      if (badge) badge.textContent = "No data";
+      return;
+    }
     var rng = (m.first_date && m.last_date) ? m.first_date + " → " + m.last_date : "no data";
     elInfo.textContent = m.count + " items · " + m.weeks + " weeks · " + rng;
+    /* Clear the "Loading latest data…" placeholder once real data arrives. */
+    if (badge) badge.textContent = "Latest week " + (m.last_date || "unknown");
   }
 
   function renderAlerts(panel, alerts) {
@@ -137,6 +144,56 @@
     else renderData(con, pivot);
   }
 
+  /* ---------- basket filters (search + categories + item picker) -------- */
+  function changes() {
+    var map = {};
+    (pivot.items || []).forEach(function (it) { map[it.name] = it.pct; });
+    return map;
+  }
+
+  function visibleItems() {
+    var box = el("search");
+    var term = box ? box.value.trim().toLowerCase() : "";
+    return items.filter(function (it) {
+      if (activeCats.size && !activeCats.has(it.category)) return false;
+      if (!term) return true;
+      return (it.name + " " + it.category).toLowerCase().indexOf(term) !== -1;
+    });
+  }
+
+  function refreshItems() {
+    renderItems(el("itemList"), visibleItems(), selected,
+      function (id, on) { if (on) selected.add(id); else selected.delete(id); },
+      changes());
+  }
+
+  /* Category chips decide which categories are charted; "All items" clears. */
+  function pickCategory(cat) {
+    if (!cat) activeCats.clear();
+    else if (activeCats.has(cat)) activeCats.delete(cat);
+    else activeCats.add(cat);
+    selected.clear();
+    visibleItems().forEach(function (it) { selected.add(it.id); });
+    renderCategories(el("categoryFilters"), items, activeCats, pickCategory);
+    refreshItems();
+    load();
+  }
+
+  /* Boots the basket: /api/items -> chips + checkboxes -> first render. */
+  function loadItems() {
+    getJSON("/api/items").then(function (rows) {
+      items = rows || [];
+      selected.clear();
+      activeCats.clear();
+      items.forEach(function (it) { selected.add(it.id); });
+      renderCategories(el("categoryFilters"), items, activeCats, pickCategory);
+      refreshItems();
+      load();
+    }).catch(function (err) {
+      renderError(el("view"), err.message || "Could not load the item list");
+    });
+  }
+
   function wire() {
     el("apply").addEventListener("click", function () {
       var s = el("start").value, e = el("end").value;
@@ -173,6 +230,14 @@
           load();
         });
       })(presets[k]);
+    }
+    var searchBox = el("search");
+    if (searchBox) {
+      var searchTimer = null;
+      searchBox.addEventListener("input", function () {
+        if (searchTimer) clearTimeout(searchTimer);
+        searchTimer = setTimeout(refreshItems, 150);
+      });
     }
     el("export").addEventListener("click", function () {
       var csvUrl = "/api/series.csv" + query();

@@ -2,8 +2,14 @@
    Render layer (state-free). Loaded before app.js.
    Design rules live in style.css tokens; icons are inline Lucide-style SVGs.
    ========================================================================== */
-var PALETTE = ["#0072B2", "#E69F00", "#009E73", "#CC79A7", "#56B4E9",
-  "#D55E00", "#6A3D9A", "#8C8C8C", "#B15928", "#4E79A7", "#E0A106"];
+var PALETTE = ["#046A38", "#0072B2", "#E69F00", "#CC79A7", "#56B4E9",
+  "#D55E00", "#6A3D9A", "#8C8C8C", "#B15928", "#4E79A7", "#009E73"];
+
+/* Chart canvas colours (keep in sync with the tokens in style.css):
+   Pakistan-flag green for brand marks, vermillion for rises, jade for falls. */
+var INK = "#12211a", GRID = "#eceef1", AXIS = "#e3e6ea", TICK = "#55605a";
+var BRAND = "#046a38", BRAND_SOFT = "rgba(4,106,56,.12)";
+var UP = "#c2410c", DOWN = "#009e73";
 
 var ICONS = {
   alert: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
@@ -50,16 +56,104 @@ function renderEmpty(container, title, message, icon) {
     '<span class="title">' + esc(title) + '</span><span>' + esc(message) + '</span></div>';
 }
 
+/* ---------- basket filters (category chips + item checkboxes) ------------ */
+/* Renders the category filter chips into #categoryFilters. `active` is a Set of
+   category names (empty = "all"); onPick(name) receives "" to clear it. */
+function renderCategories(container, items, active, onPick) {
+  var cats = [];
+  items.forEach(function (it) {
+    if (cats.indexOf(it.category) === -1) cats.push(it.category);
+  });
+  cats.sort();
+  var chip = function (label, count, on, key) {
+    var s = document.createElement("span");
+    s.className = "category-chip" + (on ? " on" : "");
+    s.setAttribute("role", "button");
+    s.setAttribute("tabindex", "0");
+    s.textContent = label;
+    if (count !== null) {
+      var p = document.createElement("span");
+      p.className = "pill";
+      p.textContent = count;
+      s.appendChild(p);
+    }
+    var pick = function () { onPick(key); };
+    s.addEventListener("click", pick);
+    s.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); pick(); }
+    });
+    return s;
+  };
+  container.innerHTML = "";
+  container.appendChild(chip("All items", items.length, active.size === 0, ""));
+  cats.forEach(function (c) {
+    var n = items.filter(function (i) { return i.category === c; }).length;
+    container.appendChild(chip(c, n, active.has(c), c));
+  });
+}
+
+/* Renders the item checkboxes into #itemList. `selected` is a Set of item ids,
+   `changes` an optional map of item name -> % change over the current window. */
+function renderItems(container, items, selected, onToggle, changes) {
+  container.innerHTML = "";
+  if (!items.length) {
+    renderEmpty(container, "No items match",
+      "Clear the search box or pick another category.", "trend");
+    return;
+  }
+  items.forEach(function (it) {
+    var row = document.createElement("label");
+    row.className = "item-row";
+    var check = document.createElement("span");
+    check.className = "ir-check";
+    var box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = selected.has(it.id);
+    box.value = String(it.id);
+    check.appendChild(box);
+    var body = document.createElement("span");
+    body.className = "ir-body";
+    var nm = document.createElement("span");
+    nm.className = "ir-name";
+    nm.textContent = it.name;
+    var cat = document.createElement("span");
+    cat.className = "ir-cat";
+    cat.textContent = it.category;
+    body.appendChild(nm);
+    body.appendChild(cat);
+    var meta = document.createElement("span");
+    meta.className = "ir-meta";
+    var ch = changes ? changes[it.name] : undefined;
+    if (typeof ch === "number") {
+      var sp = document.createElement("span");
+      sp.className = "ir-ch " + pctCls(ch);
+      sp.textContent = pct(ch);
+      meta.appendChild(sp);
+      meta.appendChild(document.createTextNode(" \u00b7 " + it.unit));
+    } else {
+      meta.textContent = it.unit;
+    }
+    box.addEventListener("change", function () { onToggle(it.id, box.checked); });
+    row.appendChild(check);
+    row.appendChild(body);
+    row.appendChild(meta);
+    container.appendChild(row);
+  });
+}
+
+/* Chart.js comes from a CDN; degrade gracefully when it did not load. */
+function hasChart() { return typeof Chart !== "undefined"; }
+
 /* ---------- charts ------------------------------------------------------ */
 function baseOptions(yTitle, tooltipFmt) {
   return {
     responsive: true,
     interaction: { intersect: false, mode: "index" },
     plugins: {
-      legend: { labels: { color: "#17181c", usePointStyle: true,
+      legend: { labels: { color: INK, usePointStyle: true,
         pointStyleWidth: 9, boxPadding: 8,
         font: { family: "Inter", size: 12, weight: 500 } } },
-      tooltip: { backgroundColor: "#17181c", titleColor: "#ffffff",
+      tooltip: { backgroundColor: INK, titleColor: "#ffffff",
         bodyColor: "#e7eef7", padding: 10, cornerRadius: 8, displayColors: true,
         callbacks: { label: function (c) {
           var s = c.dataset.label || "";
@@ -67,13 +161,13 @@ function baseOptions(yTitle, tooltipFmt) {
         } } }
     },
     scales: {
-      x: { grid: { color: "#eceef1" }, border: { color: "#e3e6ea" },
-           ticks: { color: "#5c6470", maxTicksLimit: 10,
+      x: { grid: { color: GRID }, border: { color: AXIS },
+           ticks: { color: TICK, maxTicksLimit: 10,
                     font: { family: "Inter", size: 12 } } },
-      y: { beginAtZero: false, grid: { color: "#eceef1" },
+      y: { beginAtZero: false, grid: { color: GRID },
            border: { display: false },
-           ticks: { color: "#5c6470", font: { family: "Inter", size: 12 } },
-           title: { display: !!yTitle, text: yTitle || "", color: "#5c6470",
+           ticks: { color: TICK, font: { family: "Inter", size: 12 } },
+           title: { display: !!yTitle, text: yTitle || "", color: TICK,
                     font: { family: "Inter", size: 12 } } }
     }
   };
@@ -133,6 +227,11 @@ function toast(msg) {
 
 /* ---------- views: trends / compare / data ------------------------------ */
 function renderTrends(container, pivot, sub) {
+  if (!hasChart()) {
+    renderEmpty(container, "Charts unavailable",
+      "Chart.js could not be loaded. Check your connection, or use the Data tab.", "trend");
+    return;
+  }
   container.innerHTML =
     '<div class="viewhead"><span class="viewtitle">Trends</span>' +
     '<div class="subnav" role="tablist">' +
@@ -152,9 +251,9 @@ function renderTrends(container, pivot, sub) {
     activeChart = new Chart(canvas, {
       type: "line",
       data: { labels: labels, datasets: [{ label: "Basket cost index",
-        data: pivot.index, borderColor: "#b45309", borderWidth: 2,
+        data: pivot.index, borderColor: BRAND, borderWidth: 2,
         tension: 0.2, pointRadius: 0, fill: true,
-        backgroundColor: "rgba(180,83,9,.08)" }] },
+        backgroundColor: BRAND_SOFT }] },
       options: baseOptions("Index (start = 100)", function (v) { return Number(v).toFixed(1); })
     });
   } else {
@@ -171,10 +270,15 @@ function renderTrends(container, pivot, sub) {
 }
 
 function renderCompare(container, pivot) {
+  if (!hasChart()) {
+    renderEmpty(container, "Charts unavailable",
+      "Chart.js could not be loaded. Check your connection, or use the Data tab.", "trend");
+    return;
+  }
   var sorted = pivot.items.slice().sort(function (a, b) { return a.pct - b.pct; });
   var labels = sorted.map(function (it) { return it.name; });
   var vals = sorted.map(function (it) { return Number(it.pct.toFixed(1)); });
-  var colors = vals.map(function (v) { return v >= 0 ? "#c2410c" : "#0a7d4f"; });
+  var colors = vals.map(function (v) { return v >= 0 ? UP : DOWN; });
   container.innerHTML =
     '<div class="viewhead"><span class="viewtitle">Compare basket</span>' +
     '<span class="view-sub">% change since the start of the range</span></div>' +
@@ -189,16 +293,16 @@ function renderCompare(container, pivot) {
       indexAxis: "y", responsive: true,
       plugins: {
         legend: { display: false },
-        tooltip: { backgroundColor: "#17181c", padding: 10, cornerRadius: 8,
+        tooltip: { backgroundColor: INK, padding: 10, cornerRadius: 8,
           callbacks: { label: function (c) { return " " + pct(c.value); } } }
       },
       scales: {
-        x: { grid: { color: "#eceef1" }, border: { display: false },
-             ticks: { color: "#5c6470", font: { family: "Inter", size: 12 } },
-             title: { display: true, text: "% change", color: "#5c6470",
+        x: { grid: { color: GRID }, border: { display: false },
+             ticks: { color: TICK, font: { family: "Inter", size: 12 } },
+             title: { display: true, text: "% change", color: TICK,
                       font: { family: "Inter", size: 12 } } },
         y: { grid: { display: false }, border: { display: false },
-             ticks: { color: "#17181c", font: { family: "Inter", size: 12 } } }
+             ticks: { color: INK, font: { family: "Inter", size: 12 } } }
       }
     }
   });
