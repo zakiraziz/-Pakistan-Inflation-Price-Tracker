@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Methodology · Pakistan Inflation Price Tracker</title>
+  <meta name="description" content="How the Pakistan Inflation Price Tracker builds its basket, weekly price series, cost index, inflation statistics and price-jump alerts." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="page">
+
+  <header class="hero">
+    <div class="logo" aria-hidden="true">₨</div>
+    <div class="brand">
+      <h1>Methodology</h1>
+      <p class="sub">How the basket, the index and the alerts are calculated</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn" href="/">Back to the tracker</a>
+      <a class="btn-ghost btn" href="/static/explainer.html" target="_blank" rel="noopener">Economics explainer</a>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Method at a glance">
+    <div class="kpi">
+      <span class="kpi-label">Basket size</span>
+      <span class="kpi-value">11 items</span>
+      <span class="kpi-sub">everyday goods, five categories</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Cadence</span>
+      <span class="kpi-value">7 days</span>
+      <span class="kpi-sub">fixed weekly grid from 2023-01-01</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Index base</span>
+      <span class="kpi-value">100</span>
+      <span class="kpi-sub">first date of the selected window</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Alert threshold</span>
+      <span class="kpi-value">5%</span>
+      <span class="kpi-sub">week-on-week, adjustable in the UI</span>
+    </div>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">What this tracker measures</span>
+      <span class="view-sub">a cost-of-living basket, not a national CPI</span>
+    </div>
+    <p>
+      The tracker follows a small, fixed basket of goods that dominate household
+      budgets in Pakistan: staples (wheat flour, sugar, rice, cooking oil),
+      fresh produce (onion, potato), protein (chicken, eggs, milk) and energy
+      (petrol, electricity). Each item is priced in the unit households
+      actually buy, and every observation is stored with its own provenance.
+    </p>
+    <p class="hint">
+      This is a representative educational sample generated deterministically for
+      demonstration. It is not official CPI data and must not be used for policy,
+      indexation or settlement decisions.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">The basket</span>
+      <span class="view-sub">reference price is the item's value on 2023-01-01</span>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">Category</th>
+            <th scope="col">Unit</th>
+            <th scope="col">Reference price (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="nm">Wheat flour (atta)</td><td>Grocery</td><td>per 20 kg bag</td><td>1,950</td></tr>
+          <tr><td class="nm">Sugar</td><td>Grocery</td><td>per kg</td><td>150</td></tr>
+          <tr><td class="nm">Basmati rice</td><td>Grocery</td><td>per kg</td><td>210</td></tr>
+          <tr><td class="nm">Cooking oil</td><td>Grocery</td><td>per 5 L</td><td>2,400</td></tr>
+          <tr><td class="nm">Onion</td><td>Fresh produce</td><td>per kg</td><td>110</td></tr>
+          <tr><td class="nm">Potato</td><td>Fresh produce</td><td>per kg</td><td>60</td></tr>
+          <tr><td class="nm">Chicken</td><td>Poultry</td><td>per kg</td><td>560</td></tr>
+          <tr><td class="nm">Eggs</td><td>Dairy &amp; protein</td><td>per dozen</td><td>340</td></tr>
+          <tr><td class="nm">Fresh milk</td><td>Dairy &amp; protein</td><td>per litre</td><td>220</td></tr>
+          <tr><td class="nm">Petrol (super)</td><td>Energy</td><td>per litre</td><td>268</td></tr>
+          <tr><td class="nm">Electricity</td><td>Energy</td><td>per kWh</td><td>34</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">Weekly series and seasonality</span>
+      <span class="view-sub">one observation per item per week</span>
+    </div>
+    <p>
+      Prices are recorded on a fixed seven-day grid anchored at 2023-01-01, so any
+      two series can be compared week by week without interpolation. The
+      underlying growth path decays over time to mirror Pakistan's actual
+      disinflation: roughly 3.3% per month at the start of 2023 easing towards
+      0.5–0.7% per month by 2026. Each item applies its own growth multiplier, and
+      fresh produce additionally carries a seasonal swing, which is why onion and
+      potato are the most volatile lines in the basket.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">The basket cost index</span>
+      <span class="view-sub">equal-weighted, re-based to the selected window</span>
+    </div>
+    <p>
+      The index is an equal-weighted sum of item prices. On any date, the basket
+      cost is the sum of the 11 item prices for that week. The index on a date
+      equals the basket cost on that date divided by the basket cost on the first
+      date of the selected window, multiplied by 100. The first point of every
+      window is therefore always 100, and the last point shows the percentage
+      change in the cost of the basket over that window. Because it is
+      equal-weighted, a kilogram of onion carries the same influence as a
+      20 kg bag of flour — the index measures how a household basket behaves,
+      not a national expenditure-weighted price level.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">Inflation statistics</span>
+      <span class="view-sub">weekly, annualised and year-on-year</span>
+    </div>
+    <p>
+      Three headline numbers are derived from the same series. The weekly average
+      change is the geometric mean week-on-week movement across the window. The
+      annualised rate extrapolates the total basket movement over the window to a
+      365-day rate. The year-on-year rate compares the latest basket cost with the
+      basket cost for the closest week at least 364 days earlier. All three are
+      computed from approved observations only.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">Price-jump alerts</span>
+      <span class="view-sub">week-on-week change at or above the threshold</span>
+    </div>
+    <p>
+      For every item, the most recent approved week is compared with the week
+      before it. If the change is at or above the alert threshold — 5% by
+      default, adjustable in the control bar — the item is flagged with its
+      previous price, new price and percentage change. Alerts are recomputed
+      whenever new data is ingested, and only approved observations can raise an
+      alert, so a price still awaiting review can never appear as a signal.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">Provenance and approval</span>
+      <span class="view-sub">every point is attributable and reviewable</span>
+    </div>
+    <p>
+      Each observation stores its source, collection method and collection
+      timestamp alongside the price. Observations arrive with a status:
+      approved points feed the public series, index, statistics and alerts,
+      while pending points are held back for review and rejected points are
+      permanently excluded from the index. Reviews are recorded through the
+      admin endpoints, so the audit trail explains why a price is or is not in
+      the published series.
+    </p>
+  </section>
+
+  <section class="view">
+    <div class="viewhead">
+      <span class="viewtitle">Data access</span>
+      <span class="view-sub">read the same numbers the dashboard uses</span>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr><th scope="col">Endpoint</th><th scope="col">Returns</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="nm">/api/items</td><td>the 11 basket items with category and unit</td></tr>
+          <tr><td class="nm">/api/series</td><td>filtered price observations, by date range and item</td></tr>
+          <tr><td class="nm">/api/index</td><td>basket cost index, re-based to 100 at the window start</td></tr>
+          <tr><td class="nm">/api/metrics</td><td>headline cards: basket change, riser, faller</td></tr>
+          <tr><td class="nm">/api/pivot</td><td>item-by-date matrix used by the trends, compare and data views</td></tr>
+          <tr><td class="nm">/api/inflation</td><td>weekly, annualised and year-on-year rates</td></tr>
+          <tr><td class="nm">/api/alerts</td><td>price jumps at or above the threshold</td></tr>
+          <tr><td class="nm">/api/series.csv</td><td>the current view as a CSV download</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">
+      Ingesting the next weekly observation is idempotent: re-running it for a
+      week that is already stored changes nothing.
+    </p>
+  </section>
+
+  <footer>
+    <p>
+      <a href="/">Price tracker</a> ·
+      <a href="/static/explainer.html" target="_blank" rel="noopener">Economics explainer</a> ·
+      Representative educational sample · Flask, SQLite, Chart.js
+    </p>
+  </footer>
+</div>
+</body>
+</html>

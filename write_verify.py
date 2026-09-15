@@ -1,60 +1,79 @@
-"""Write verify.py to disk (avoids PowerShell quoting issues)."""
+"""Write verify.py to disk using Python to avoid shell/PowerShell quoting issues."""
 from pathlib import Path
 
-content = r'''"""End-to-end verification: boot server, hit every route, check CSS coverage."""
-import json, os, subprocess, sys, time, urllib.request, urllib.parse
-from pathlib import Path
+lines = []
+lines.append('"""')
+lines.append('Verify the Pakistan Inflation Price Tracker — boots the server, hits every API')
+lines.append('and HTML endpoint, then checks CSS coverage.  Run with:')
+lines.append('')
+lines.append('    python verify.py')
+lines.append('"""')
+lines.append('import json, os, re, subprocess, sys, time, urllib.request, urllib.parse')
+lines.append('from pathlib import Path')
+lines.append('')
+lines.append('BASE_DIR = Path(__file__).resolve().parent')
+lines.append('BASE_URL = "http://127.0.0.1:5010"')
+lines.append('PASS = 0')
+lines.append('FAIL = 0')
+lines.append('FAIL_LIST = []')
+lines.append('')
+lines.append('')
+lines.append('def ok(desc, cond, note=""):')
+lines.append('    global PASS, FAIL')
+lines.append('    if cond:')
+lines.append('        PASS += 1')
+lines.append('        print(f"  OK   {desc}")')
+lines.append('    else:')
+lines.append('        FAIL += 1')
+lines.append('        FAIL_LIST.append((desc, note))')
+lines.append('        print(f"  FAIL {desc}" + (f"  :: {note}" if note else ""))')
+lines.append('')
+lines.append('')
+lines.append('def get(path, timeout=8):')
+lines.append('    url = BASE_URL + path')
+lines.append('    try:')
+lines.append('        with urllib.request.urlopen(url, timeout=timeout) as r:')
+lines.append('            return r.status, r.read(), r.headers.get("Content-Type", "")')
+lines.append('    except Exception as exc:')
+lines.append('        return None, str(exc).encode(), ""')
+lines.append('')
+lines.append('')
+lines.append('def get_json(path, timeout=8):')
+lines.append('    status, raw, ct = get(path, timeout)')
+lines.append('    if status != 200:')
+lines.append('        return None, f"status={status}"')
+lines.append('    try:')
+lines.append('        return json.loads(raw.decode("utf-8")), None')
+lines.append('    except Exception as exc:')
+lines.append('        return None, f"json:{exc}"')
+lines.append('')
+lines.append('')
+lines.append('def boot_server(timeout=30):')
+lines.append('    proc = subprocess.Popen(')
+lines.append('        [sys.executable, str(BASE_DIR / "app.py")],')
+lines.append('        cwd=str(BASE_DIR),')
+lines.append('        stdout=subprocess.DEVNULL,')
+lines.append('        stderr=subprocess.DEVNULL,')
+lines.append('        env={**os.environ, "FLASK_DEBUG": "0"},')
+lines.append('    )')
+lines.append('    deadline = time.time() + timeout')
+lines.append('    while time.time() < deadline:')
+lines.append('        time.sleep(1)')
+lines.append('        if proc.poll() is not None:        # crashed')
+lines.append('            return None')
+lines.append('        try:')
+lines.append('            if get("/healthz", timeout=2)[0] == 200:')
+lines.append('                return proc')
+lines.append('        except Exception:')
+lines.append('            pass')
+lines.append('    proc.kill()')
+lines.append('    try:')
+lines.append('        proc.wait(timeout=5)')
+lines.append('    except Exception:')
+lines.append('        pass')
+lines.append('    return None')
+lines.append('')
+lines.append('')
 
-BASE_DIR = Path(__file__).resolve().parent
-BASE = "http://127.0.0.1:5010"
-ok_list, fail_list = [], []
-
-def check(desc, ok, detail=""):
-    (ok_list if ok else fail_list).append((desc, detail))
-    tag = "OK   " if ok else "FAIL "
-    print(f"  {tag} {desc}" + (f"  ({detail})" if detail else ""))
-
-def get(path, timeout=8):
-    url = BASE + path
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            return r.status, r.read(), r.headers.get("Content-Type", "")
-    except Exception as e:
-        return None, str(e).encode(), ""
-
-def get_json(path, timeout=8):
-    st, body, ct = get(path, timeout)
-    if st != 200:
-        return None, f"status={st}"
-    try:
-        return json.loads(body.decode("utf-8")), None
-    except Exception as e:
-        return None, f"json:{e}"
-
-def boot(timeout=30):
-    p = subprocess.Popen([sys.executable, str(BASE_DIR/"app.py")], cwd=BASE_DIR,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         env={**os.environ, "FLASK_DEBUG":"0"})
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        time.sleep(1)
-        if p.poll() is not None:
-            return None
-        try:
-            if get("/healthz", timeout=2)[0] == 200:
-                return p
-        except Exception:
-            pass
-    p.kill(); p.wait(timeout=5)
-    return None
-
-# ============================== BOOT
-server = boot()
-if server is None:
-    print("SERVER DID NOT START"); sys.exit(1)
-print("Server ready.\n"); time.sleep(0.5)
-
-'''
-
-Path("verify.py").write_text(content, encoding="utf-8")
-print("Wrote verify.py stub:", len(content), "bytes")
+Path("verify.py").write_text("\n".join(lines) + "\n", encoding="utf-8")
+print("Wrote verify.py header:", len(lines), "lines")

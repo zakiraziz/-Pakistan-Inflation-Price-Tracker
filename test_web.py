@@ -57,10 +57,16 @@ def free_port():
 def main():
     env = dict(os.environ)
     env["PORT"] = str(PORT)
+    root = os.path.dirname(os.path.abspath(__file__))
+    # Werkzeug logs every request. Streaming that into an UNREAD pipe fills the
+    # OS pipe buffer (~4KB on Windows) and then deadlocks the server mid-run,
+    # so send the access log to a file we can also read if boot fails.
+    log_path = os.path.join(root, "test_web_server.log")
+    server_log = open(log_path, "w", encoding="utf-8")
     proc = subprocess.Popen(
         [sys.executable, "app.py"],
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        cwd=root,
+        env=env, stdout=server_log, stderr=subprocess.STDOUT, text=True,
     )
     try:
         # wait for boot
@@ -78,8 +84,10 @@ def main():
                     break
                 time.sleep(0.4)
         if not ready:
-            out = proc.stdout.read() if proc.stdout else ""
             proc.kill()
+            server_log.flush()
+            with open(log_path, encoding="utf-8") as fh:
+                out = fh.read()
             raise SystemExit("SERVER FAILED TO BOOT:\n" + out)
 
         for path, code in ROUTES.items():
@@ -143,6 +151,7 @@ def main():
             proc.wait(timeout=5)
         except Exception:
             proc.kill()
+        server_log.close()
 
 
 if __name__ == "__main__":

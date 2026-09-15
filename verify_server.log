@@ -1,0 +1,28 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+{"ts": "2026-09-15T21:49:44+0500", "level": "INFO", "logger": "werkzeug", "msg": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5010\n * Running on http://192.168.100.12:5010"}
+{"ts": "2026-09-15T21:49:44+0500", "level": "INFO", "logger": "werkzeug", "msg": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /healthz HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /healthz HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /readyz HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /static/style.css HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /static/helpers.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /static/explainer.html HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/items HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/series?start=2026-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/series?start=2026-01-01&end=2026-03-01&items=1,2 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/index?start=2023-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/metrics?start=2023-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/pivot?start=2023-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:45+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:45] \"GET /api/pivot?start=2026-01-01&items=1,2,3 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /api/inflation?start=2023-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /api/alerts?threshold=20 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /api/alerts?threshold=5&start=2026-01-01 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /api/series.csv?items=1,2 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /methodology HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "app", "msg": "ingest run: {'total': 11, 'approved': 0, 'pending': 0, 'rejected': 0, 'skipped': 11}"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"POST /ingest/next HTTP/1.1\" 200 -"}
+{"ts": "2026-09-15T21:49:46+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [15/Sep/2026 21:49:46] \"GET /healthz HTTP/1.1\" 200 -"}
