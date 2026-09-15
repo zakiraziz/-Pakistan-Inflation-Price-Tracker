@@ -334,9 +334,9 @@ ok("style.css defines >= 40 class selectors", len(css_classes) >= 40,
    str(len(css_classes)))
 ok("every index.html class has a style.css rule",
    not unstyled, "unstyled: " + ", ".join("." + c for c in unstyled))
-log("  INFO dashboard shell classes: %d, styled: %d (%d%%)"
-    % (len(dom_classes), ratio,
-       round(100.0 * ratio / max(1, len(dom_classes)))))
+styled_pct = round(100.0 * ratio / max(1, len(dom_classes)))
+log(f"  INFO dashboard shell classes: {len(dom_classes)}, "
+    f"styled: {ratio} ({styled_pct}%)")
 
 # ---- helpers.js <-> app.js integration ----------------------------------
 log("\n--- helpers.js / app.js integration ---")
@@ -392,7 +392,7 @@ if j:
     ok("healthz still reports ok", j.get("status") == "ok", str(j.get("status")))
     ok("approved_points unchanged or higher",
        APPROVED_BEFORE is None or j.get("approved_points", 0) >= APPROVED_BEFORE,
-       "before=%s after=%s" % (APPROVED_BEFORE, j.get("approved_points")))
+       f"before={APPROVED_BEFORE} after={j.get('approved_points')}")
     ok("healthz.items still 11", j.get("items") == 11, str(j.get("items")))
 
 # =========================================================================
@@ -406,16 +406,15 @@ except Exception:
 
 log("")
 log("=" * 62)
-log("RESULT: %d passed, %d failed" % (_PASS, _FAIL))
+log(f"RESULT: {_PASS} passed, {_FAIL} failed")
 if _FAIL_LIST:
     log("FAILURES:")
     for desc, note in _FAIL_LIST:
-        log("  * %s%s" % (desc, ("  :: " + note) if note else ""))
+        log("  * " + desc + ("  :: " + note if note else ""))
 else:
     log("All checks passed.")
 log("=" * 62)
 
-_fh.close()
-_SERVER_LOG.close()
+sys.exit(2 if _FAIL else 0)
 
 sys.exit(0 if _FAIL == 0 else 2)
