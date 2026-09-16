@@ -85,7 +85,37 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
 .brand .sub { color: var(--muted); font-size: var(--fs-md); margin-top: 2px; }
 .hero-actions { margin-left: auto; display: flex; align-items: center;
   gap: var(--s3); }
-.updated { color: var(--muted); font-size: var(--fs-sm); font-weight: var(--fw-500); }
+.updated { display: inline-flex; align-items: baseline; gap: var(--s2);
+  color: var(--muted); font-size: var(--fs-sm); font-weight: var(--fw-500); }
+.updated-age { color: var(--faint); font-size: var(--fs-xs); }
+.updated-age::before { content: "·"; margin-right: var(--s2);
+  color: var(--border-strong); }
+
+/* ---------- live status pill (Server-Sent Events connection) ---------- */
+.live { display: inline-flex; align-items: center; gap: var(--s2);
+  padding: 3px 10px 3px 8px; border: 1px solid var(--border);
+  border-radius: 999px; background: var(--surface-2); color: var(--muted);
+  font-size: var(--fs-xs); font-weight: var(--fw-600); white-space: nowrap; }
+/* min-width keeps the hero from shifting as the label changes */
+.live-text { min-width: 7ch; font-variant-numeric: tabular-nums; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%;
+  background: var(--faint); }
+.live[data-state="live"] { background: var(--accent-soft);
+  border-color: rgba(4,106,56,.28); color: var(--accent-strong); }
+.live[data-state="live"] .live-dot { background: var(--accent);
+  animation: live-pulse 2.4s ease-out infinite; }
+.live[data-state="connecting"] .live-dot,
+.live[data-state="retrying"] .live-dot { background: #b45309;
+  animation: live-pulse 1.2s ease-out infinite; }
+.live[data-state="offline"] { background: var(--danger-soft);
+  border-color: rgba(194,65,12,.3); color: var(--up); }
+.live[data-state="offline"] .live-dot { background: var(--up); }
+.live[data-state="paused"] { opacity: .65; }
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(4,106,56,.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(4,106,56,0); }
+  100% { box-shadow: 0 0 0 0 rgba(4,106,56,0); }
+}
 
 /* ---------- buttons & inputs ---------- */
 .btn { display: inline-flex; align-items: center; gap: var(--s2);

@@ -9,6 +9,8 @@ GET  /                 -> dashboard (static/index.html)
 GET  /api/items        -> list of tracked items
 GET  /api/series?start=&end=&items=  -> filtered time-series
 GET  /api/alerts?threshold= -> latest price-jump alerts
+GET  /api/live         -> freshness snapshot (data revision + counts)
+GET  /api/stream       -> Server-Sent Events: live updates + heartbeats
 POST /ingest/next      -> run the ingest job (adds next week + recomputes alerts)
 
 Run locally:
@@ -20,11 +22,12 @@ from __future__ import annotations
 import os
 import time
 
-from flask import Flask, jsonify, make_response, render_template_string, request
+from flask import Flask, Response, jsonify, make_response, render_template_string, request
 
 import db
 import log
 from alert import latest_alerts
+from core import live
 from core.config import settings
 from core.security import install
 
@@ -60,12 +63,12 @@ STARTED_AT = time.time()
 def asset_version():
     """Cache-busting build id: newest mtime of the front-end assets.
 
-    app.js / helpers.js / style.css are served with a ?v=<id> stamp so a browser
-    can never keep running an old bundle against new markup (which silently
-    breaks the dashboard: listeners wired but nothing renders).
+    app.js / helpers.js / live.js / style.css are served with a ?v=<id> stamp so
+    a browser can never keep running an old bundle against new markup (which
+    silently breaks the dashboard: listeners wired but nothing renders).
     """
     newest = 0.0
-    for name in ("app.js", "helpers.js", "style.css"):
+    for name in ("app.js", "helpers.js", "live.js", "style.css"):
         try:
             newest = max(newest, os.path.getmtime(os.path.join(BASE_DIR, "static", name)))
         except OSError:  # pragma: no cover - asset always shipped
@@ -362,6 +365,47 @@ def api_alerts():
     )
 
 
+@app.route("/api/live")
+def api_live():
+    """Cheap freshness snapshot: data revision plus counts.
+
+    Never cached, and far lighter than re-reading /api/metrics, so a browser can
+    poll it as the fallback when a stream cannot be kept open.
+    """
+    return jsonify(live.snapshot())
+
+
+@app.route("/api/stream")
+@limiter.exempt
+def api_stream():
+    """Server-Sent Events feed that keeps every open dashboard current.
+
+    Emits ``hello`` on connect, ``update`` the instant the dataset changes
+    (ingest, approval, or a write by another process), and ``heartbeat`` every
+    ``live.HEARTBEAT_SECONDS`` so a client can tell a quiet week from a dead
+    connection. The stream is long-lived, so it is exempt from the request rate
+    limit - one browser holds exactly one connection.
+    """
+    live.start_watcher()
+
+    def frames():
+        yield "retry: 3000\n\n"
+        yield live.sse_frame("hello", live.snapshot())
+        seen = live.tick()
+        while True:
+            current = live.wait(seen, live.HEARTBEAT_SECONDS)
+            changed = current != seen
+            seen = current
+            yield live.sse_frame("update" if changed else "heartbeat",
+                                 live.snapshot())
+
+    resp = Response(frames(), mimetype="text/event-stream")
+    resp.headers["Cache-Control"] = "no-store"
+    resp.headers["X-Accel-Buffering"] = "no"    # never buffer behind a proxy
+    resp.headers["Connection"] = "keep-alive"
+    return resp
+
+
 @app.route("/ingest/next", methods=["POST"])
 @limiter.limit(write_limit)
 def run_job():
@@ -376,6 +420,7 @@ def run_job():
     n, snap, counts = job.add_next_week(con, when, auto_approve=auto_approve)
     con.close()
     cache.clear()          # data changed -> invalidate cached API responses
+    live.bump("ingest run")  # and wake every open dashboard stream
     logger.info("ingest run: %s", counts)
     return jsonify({"inserted": n, "for_week": snap.isoformat(), "counts": counts})
 
@@ -408,7 +453,9 @@ def admin_approve():
                              (db.STATUS_APPROVED, pid, db.STATUS_PENDING)).rowcount
     con.commit()
     con.close()
-    cache.clear()
+    if n:
+        cache.clear()
+        live.bump("pending points approved")
     logger.info("approved %s pending point(s)", n)
     return jsonify({"approved": n})
 
@@ -434,6 +481,8 @@ def admin_reject():
     con.commit()
     con.close()
     cache.clear()
+    if n:
+        live.bump("pending points rejected")
     logger.info("rejected %s pending point(s)", n)
     return jsonify({"rejected": n})
 

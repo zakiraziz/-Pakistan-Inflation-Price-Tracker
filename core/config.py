@@ -73,6 +73,8 @@ class Config:
     # scheduled ingestion cron (UTC)
     ingest_cron_dow: str
     ingest_cron_hour: int
+    # cadence for scheduler.py: seconds between runs (0 = weekly cron instead)
+    ingest_interval_seconds: int
 
     # future: Postgres backend (schema is Postgres-compatible)
     database_url: str
@@ -94,6 +96,7 @@ class Config:
             json_lines=_env_bool("JSON_LINES", True),
             ingest_cron_dow=_env("INGEST_CRON_DOW", "sat"),
             ingest_cron_hour=_env_int("INGEST_CRON_HOUR", 6),
+            ingest_interval_seconds=_env_int("INGEST_INTERVAL_SECONDS", 0),
             database_url=_env("DATABASE_URL", ""),
         )
 

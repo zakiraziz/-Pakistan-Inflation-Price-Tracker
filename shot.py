@@ -68,13 +68,19 @@ def main():
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
         html = dom.stdout
         checks = {
-            "annualized KPI": "Annualized inflation" in html,
-            "basket KPI": "Basket cost change" in html,
+            "basket KPI": "Basket change" in html,
+            "items KPI": "Items in view" in html,
+            "riser KPI": "Biggest riser" in html,
+            "faller KPI": "Biggest faller" in html,
+            "info line populated": "items \u00b7" in html,
             "trend canvas": "trendCanvas" in html,
             "item lines built": "Wheat flour (atta)" in html,
             "chart drew (aria-label)": "aria-label" in html,
-            "alert panel": "Price-jump alerts" in html,
-            "no JS stack trace": "Traceback" not in html and "Error" not in html[:2000],
+            "alert chips": "alert-chip" in html,
+            "category chips": "category-chip" in html,
+            "search box present": 'id="search"' in html,
+            "no error state": "Something went wrong" not in html,
+            "no leftover skeletons": "skeleton" not in html,
         }
         for k, ok in checks.items():
             print(("OK " if ok else "MISSING ") + k)
@@ -83,7 +89,8 @@ def main():
         shot = os.path.join(here, "dashboard.png")
         subprocess.run(
             [chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
-             f"--user-data-dir={prof}", "--window-size=1280,1000",
+             f"--user-data-dir={prof}", "--window-size=1280,1400",
+             "--virtual-time-budget=9000",
              f"--screenshot={shot}", BASE + "/"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
         print("SCREENSHOT", shot if os.path.exists(shot) else "FAILED")

@@ -4,6 +4,7 @@
   var tab = "trends", trendSub = "items", threshold = 5, start = "", end = "";
   var pivot = { dates: [], index: [], items: [] };
   var reqId = 0;
+  var selfUpdateAt = 0;   /* when this tab last wrote, so we ignore its own echo */
 
   function setStartEnd(s, e) { start = s; end = e;
     el("start").value = s || ""; el("end").value = e || ""; markPreset(); }
@@ -273,6 +274,7 @@
       body: JSON.stringify({ auto_approve: true }) })
       .then(function (r) { return r.json(); })
       .then(function (data) {
+        selfUpdateAt = Date.now();   /* swallow the live echo of our own write */
         if (data.counts && data.counts.pending) {
           toast("Ingested " + data.inserted + " point(s); " +
                 data.counts.pending + " pending review");
@@ -300,9 +302,24 @@
     toast._t = setTimeout(function () { t.classList.remove("show"); }, 3200);
   }
 
+  /* Push path: /api/stream reports a new data revision the moment the ingest
+     job (or an admin approval) commits, so the view refreshes itself. */
+  function onLive(data) {
+    if (Date.now() - selfUpdateAt < 5000) return;   /* our own write, already shown */
+    if (data && data.items !== items.length) {
+      toast("Basket changed \u2014 reloading");
+      loadItems();                 /* the set of tracked items itself changed */
+      return;
+    }
+    toast("New data published \u2014 view refreshed");
+    load();
+  }
+
   function init() {
     wire();
     loadItems();
+    /* Real-time transport: Server-Sent Events, with polling fallback. */
+    if (window.Live) Live.start({ onRefresh: onLive });
   }
 
   if (document.readyState === "loading") {

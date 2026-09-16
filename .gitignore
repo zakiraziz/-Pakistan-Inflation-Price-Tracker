@@ -8,3 +8,5 @@ venv/
 dashboard.png
 .coverage
 htmlcov/
+# scratch logs written by verify.py / test_web.py runs
+*.log
