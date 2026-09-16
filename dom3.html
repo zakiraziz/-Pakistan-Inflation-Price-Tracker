@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <meta name="theme-color" content="#046a38">
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -20,7 +22,7 @@
       <p class="sub">Weekly prices ┬╖ everyday goods basket ┬╖ full provenance</p>
     </div>
     <div class="hero-actions">
-      <span class="updated" id="updatedBadge">Loading latest dataΓÇª</span>
+      <span class="updated" id="updatedBadge">Latest week 2026-09-13</span>
       <button id="updateNow" class="btn-ghost btn" title="Run the ingestion job and refresh">
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"></path><path d="M21 3v5h-5"></path></svg>
         Update data
@@ -95,7 +97,7 @@
     </details>
   </section>
 
-  <section class="view" id="view" aria-live="polite"><div class="viewhead"><span class="viewtitle">Trends</span><div class="subnav" role="tablist"><button class="subtab on" data-sub="items" role="tab">Item prices</button><button class="subtab" data-sub="index" role="tab">Basket index</button></div></div><div class="chartbox"><canvas id="trendCanvas" role="img" aria-label="Price trends chart" width="706" height="353" style="display: block; box-sizing: border-box; height: 353px; width: 706px;"></canvas></div><p class="hint">Hover the chart to read exact prices. Toggle to the basket index to compare overall cost of living.</p></section>
+  <section class="view" id="view" aria-live="polite"><div class="viewhead"><span class="viewtitle">Trends</span><div class="subnav" role="tablist"><button class="subtab on" data-sub="items" role="tab">Item prices</button><button class="subtab" data-sub="index" role="tab">Basket index</button></div></div><div class="chartbox"><canvas id="trendCanvas" role="img" aria-label="Price trends chart" width="1032" height="420" style="display: block; box-sizing: border-box; height: 420px; width: 1032px;"></canvas></div><p class="hint">Hover the chart to read exact prices. Toggle to the basket index to compare overall cost of living.</p></section>
 
   <section class="alerts" id="alertsPanel" aria-label="Price jump alerts"><section class="alerts" aria-live="polite"><h2><span>Alerts</span><span class="pill">4</span></h2><div class="alert-top"><span class="icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg></span><span>Largest jump in this window: <strong>Potato</strong> +36.1% (2026-09-13, Rs 145.48)</span></div><div class="alert-chip"><span class="al-name">Potato <span class="al-cat">┬╖ Fresh produce</span></span><span class="al-price">Rs 145.48</span><span class="al-date">2026-09-13</span><span class="al-pct">+36.1% vs Rs 106.86</span></div><div class="alert-chip"><span class="al-name">Eggs <span class="al-cat">┬╖ Dairy &amp; protein</span></span><span class="al-price">Rs 832.86</span><span class="al-date">2026-09-13</span><span class="al-pct">+12.2% vs Rs 742.47</span></div><div class="alert-chip"><span class="al-name">Electricity <span class="al-cat">┬╖ Energy</span></span><span class="al-price">Rs 93.88</span><span class="al-date">2026-09-13</span><span class="al-pct">+7.5% vs Rs 87.29</span></div><div class="alert-chip"><span class="al-name">Cooking oil <span class="al-cat">┬╖ Grocery</span></span><span class="al-price">Rs 5,592.79</span><span class="al-date">2026-09-13</span><span class="al-pct">+7.0% vs Rs 5,225.79</span></div></section></section>
 

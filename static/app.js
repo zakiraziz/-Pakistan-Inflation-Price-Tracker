@@ -45,14 +45,22 @@
     /* query() already starts with "?", so threshold must be appended with "&" -
        "/api/alerts?threshold=5" + "?start=..." would 500 the endpoint. */
     var alertsUrl = "/api/alerts" + query() + "&threshold=" + threshold;
-    Promise.all([getJSON(base), getJSON(pivotUrl), getJSON(alertsUrl)])
+    /* Alerts load on their own: one failing endpoint must never blank the whole
+       dashboard (a burst of requests trips the 300/min rate limit -> 500). */
+    getJSON(alertsUrl).then(function (alerts) {
+      if (thisReq === reqId) renderAlerts(el("alertsPanel"), alerts);
+    }, function () {
+      if (thisReq === reqId) {
+        renderError(el("alertsPanel"), "Alerts are unavailable right now.");
+      }
+    });
+    Promise.all([getJSON(base), getJSON(pivotUrl)])
       .then(function (res) {
         if (thisReq !== reqId) return;
-        var metrics = res[0], p = res[1], alerts = res[2];
+        var metrics = res[0], p = res[1];
         pivot = p || { dates: [], index: [], items: [] };
         renderCards(el("kpis"), metrics);
         renderTab();
-        renderAlerts(el("alertsPanel"), alerts);
         renderInfo(metrics);
         refreshItems();        /* now we know the % change for each item */
       }).catch(function (err) {
