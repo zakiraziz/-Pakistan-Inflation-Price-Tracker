@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from flask import jsonify, render_template_string, request
+from flask import jsonify, make_response, render_template_string, request
 from werkzeug.exceptions import HTTPException
 
 logger = logging.getLogger("app.security")
@@ -79,9 +79,11 @@ def install(app) -> None:
 
     @app.errorhandler(429)
     def _too_many_requests(_e):
-        response, code = _error_body(429, "Too many requests. Slow down.")
-        response[0].headers["Retry-After"] = "60"
-        return response, code
+        # _error_body already returns a complete (body, code) tuple; wrapping it
+        # again would make Flask raise and surface as a 500.
+        response = make_response(_error_body(429, "Too many requests. Slow down."))
+        response.headers["Retry-After"] = "60"
+        return response
 
     @app.errorhandler(Exception)
     def _server_error(e):

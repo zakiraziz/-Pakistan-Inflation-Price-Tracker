@@ -20,7 +20,7 @@ from __future__ import annotations
 import os
 import time
 
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, jsonify, make_response, render_template_string, request
 
 import db
 import log
@@ -55,6 +55,25 @@ logger = log.get_logger("app")
 
 DEFAULT_START = "2025-07-01"
 STARTED_AT = time.time()
+
+
+def asset_version():
+    """Cache-busting build id: newest mtime of the front-end assets.
+
+    app.js / helpers.js / style.css are served with a ?v=<id> stamp so a browser
+    can never keep running an old bundle against new markup (which silently
+    breaks the dashboard: listeners wired but nothing renders).
+    """
+    newest = 0.0
+    for name in ("app.js", "helpers.js", "style.css"):
+        try:
+            newest = max(newest, os.path.getmtime(os.path.join(BASE_DIR, "static", name)))
+        except OSError:  # pragma: no cover - asset always shipped
+            pass
+    return str(int(newest))
+
+
+ASSET_VERSION = asset_version()
 
 
 @app.route("/readyz")
@@ -93,8 +112,12 @@ def healthz():
 
 @app.route("/")
 def index():
+    """Dashboard shell, stamped with the asset build id (see asset_version)."""
     with open(os.path.join(BASE_DIR, "static", "index.html"), encoding="utf-8") as f:
-        return render_template_string(f.read())
+        html = f.read()
+    resp = make_response(render_template_string(html, v=ASSET_VERSION))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @app.route("/methodology")

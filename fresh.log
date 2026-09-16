@@ -1,0 +1,24 @@
+ * Serving Flask app 'app'
+ * Debug mode: off
+{"ts": "2026-09-16T21:58:28+0500", "level": "INFO", "logger": "werkzeug", "msg": "\u001b[31m\u001b[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\u001b[0m\n * Running on all addresses (0.0.0.0)\n * Running on http://127.0.0.1:5010\n * Running on http://192.168.100.12:5010"}
+{"ts": "2026-09-16T21:58:28+0500", "level": "INFO", "logger": "werkzeug", "msg": "\u001b[33mPress CTRL+C to quit\u001b[0m"}
+{"ts": "2026-09-16T21:58:29+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:29] \"GET /healthz HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:39+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:39] \"GET /api/items HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:39+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:39] \"GET /api/metrics?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:39+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:39] \"GET /api/pivot?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:39+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:39] \"GET /api/alerts?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7&threshold=5 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:41+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:41] \"GET / HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:41+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:41] \"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:41+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:41] \"GET /static/style.css HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:41+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:41] \"GET /static/helpers.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/items HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/alerts?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7&threshold=5 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/metrics?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/pivot?start=&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /static/favicon.svg HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/pivot?start=2026-06-16&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/metrics?start=2026-06-16&end=&items=8,9,11,10,5,6,3,4,2,1,7 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:58:42+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:58:42] \"GET /api/alerts?start=2026-06-16&end=&items=8,9,11,10,5,6,3,4,2,1,7&threshold=5 HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:59:03+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:59:03] \"GET /static/app.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:59:03+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:59:03] \"GET /static/helpers.js HTTP/1.1\" 200 -"}
+{"ts": "2026-09-16T21:59:03+0500", "level": "INFO", "logger": "werkzeug", "msg": "127.0.0.1 - - [16/Sep/2026 21:59:03] \"GET /static/style.css HTTP/1.1\" 200 -"}
