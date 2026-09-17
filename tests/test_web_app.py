@@ -18,7 +18,7 @@ import pytest
 
 
 @pytest.fixture()
-def client(tmp_db, monkeypatch):
+def client(tmp_db):
     import seed
 
     con, path = tmp_db
@@ -91,3 +91,37 @@ def test_caching_and_invalidation(client):
 def test_rate_limit_headers_present(client):
     r = client.get("/api/items")
     assert r.status_code == 200
+    # Flask-Limiter reports the active budget on every response.
+    assert "X-RateLimit-Limit" in r.headers
+
+
+def test_rate_limit_enforced(client):
+    """Negative control: the limiter must 429 once a budget is exhausted.
+
+    Registers a throwaway route with a deliberately tight limit (decorators
+    capture their limit at request time, so this overrides the generous
+    global default without touching production configuration). Proves both
+    that the limiter is active after the fixture resets and that
+    ``core/security.py`` returns the structured JSON 429 envelope.
+    """
+    import app as app_mod
+
+    @app_mod.app.route("/api/_ratelimit-probe")
+    @app_mod.limiter.limit("1 per minute")
+    def _ratelimit_probe():  # pragma: no cover - trivial handler
+        return {"ok": True}
+
+    first = client.get("/api/_ratelimit-probe")
+    assert first.status_code == 200
+
+    second = client.get("/api/_ratelimit-probe")
+    assert second.status_code == 429
+    assert "Retry-After" in second.headers
+    body = second.get_json()
+    assert body["error"]["code"] == 429
+    assert "Slow down" in body["error"]["message"]
+
+    # A fresh reset restores the budget (the same guarantee every test gets).
+    app_mod.limiter.reset()
+    assert client.get("/api/_ratelimit-probe").status_code == 200
+
