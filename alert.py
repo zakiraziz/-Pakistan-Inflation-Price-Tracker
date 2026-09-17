@@ -55,7 +55,7 @@ def compute_alerts(con, threshold: float = 5.0, clear: bool = True):
     return len(bulk)
 
 
-def latest_alerts(con, threshold: float = 5.0, start: str = None, end: str = None):
+def latest_alerts(con, threshold: float = 5.0, start: str | None = None, end: str | None = None):
     compute_alerts(con, threshold=threshold)
     q = (
         "SELECT i.name, i.category, d.date, d.price, d.prev_price, "

@@ -5,8 +5,13 @@ filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.coverage.run]
 source = ["."]
-omit = ["tests/*", "shot.py", "scheduler.py", "test_pipeline.py", "test_web.py",
-        "seed.py", "job.py", "analyze.py"]   # CLI entrypoints are integration-tested
+omit = [
+    # CLI entrypoints & dev/verification scripts (integration- or manually-tested)
+    "tests/*", "shot.py", "scheduler.py", "test_pipeline.py", "test_web.py",
+    "seed.py", "job.py", "analyze.py",
+    "diagnose.py", "inventory.py", "compute_coverage.py", "gen.py",
+    "run_smoke.py", "run_verify.py", "verify.py", "write_verify.py",
+]   # CLI entrypoints are integration-tested
 
 [tool.coverage.report]
 show_missing = true

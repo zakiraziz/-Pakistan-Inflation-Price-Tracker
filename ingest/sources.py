@@ -39,7 +39,7 @@ class SeedSource(_BaseSource):
     name = "seed"
     method = "generator"
 
-    def __init__(self, start: date = None, end: date = None):
+    def __init__(self, start: date | None = None, end: date | None = None):
         from model import END_DATE, START_DATE
 
         self.start = start or START_DATE

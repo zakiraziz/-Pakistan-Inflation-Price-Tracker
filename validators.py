@@ -40,7 +40,7 @@ def category_limits(category: str):
     return (MAX_PCT_JUMP.get(category, DEFAULT_JUMP), MAX_PCT_DROP.get(category, DEFAULT_DROP))
 
 
-def classify(category: str, price: float, prev_price: float = None):
+def classify(category: str, price: float, prev_price: float | None = None):
     """Return (status, review_note) for a candidate price point."""
     if price is None or price <= 0:
         return db.STATUS_REJECTED, "empty or non-positive price"

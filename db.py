@@ -83,7 +83,7 @@ CREATE INDEX IF NOT EXISTS idx_alerts_item_date ON alerts(item_id, date);
 """
 
 
-def connect(path: str = None) -> sqlite3.Connection:
+def connect(path: str | None = None) -> sqlite3.Connection:
     path = path or DB_PATH  # resolved at call time (test-friendly)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     con = sqlite3.connect(path)
@@ -92,7 +92,7 @@ def connect(path: str = None) -> sqlite3.Connection:
     return con
 
 
-def init_db(path: str = None) -> sqlite3.Connection:
+def init_db(path: str | None = None) -> sqlite3.Connection:
     con = connect(path)
     con.executescript(SCHEMA)
     con.commit()
@@ -143,7 +143,7 @@ def record_ingestion(
             counts.get("rejected", 0),
         ),
     )
-    return cur.lastrowid
+    return int(cur.lastrowid or 0)
 
 
 def _utc_now() -> str:

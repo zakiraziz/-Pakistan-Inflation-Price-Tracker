@@ -38,7 +38,7 @@ def ingest(
     source_name: str,
     method: str = "",
     auto_approve: bool = True,
-    target_date: str = None,
+    target_date: str | None = None,
 ) -> dict:
     """Insert a batch of points with validation + provenance.
 
@@ -69,7 +69,11 @@ def ingest(
             continue
 
         prev = latest_approved_before(con, item["id"], pt.get("date"))
-        status, note = classify(item["category"], pt.get("price"), prev["price"] if prev else None)
+        price = pt.get("price")
+        if price is None:
+            status, note = db.STATUS_REJECTED, "empty or non-positive price"
+        else:
+            status, note = classify(item["category"], price, prev["price"] if prev else None)
         if status == db.STATUS_APPROVED and not auto_approve:
             status, note = db.STATUS_PENDING, "held for manual review"
 
