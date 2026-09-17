@@ -10,10 +10,11 @@ that produces a plausible weekly price for any date.
 Determinism matters: it makes the data pipeline *reproducible* — re-running
 the seed produces byte-for-byte the same series.
 """
+
 from __future__ import annotations
 
-from datetime import date, timedelta
 import math
+from datetime import date, timedelta
 
 # ---------------------------------------------------------------------------
 # Items
@@ -26,17 +27,17 @@ import math
 # seasonal_amp        : amplitude of the seasonal swing (fresh produce is volatile)
 # seasonal_phase      : phase offset in radians for when the peak occurs
 ITEMS = [
-    ("Wheat flour (atta)", "Grocery",        "per 20 kg bag", 1950, 1.00, 0.05, 0.00),
-    ("Sugar",             "Grocery",         "per kg",         150, 1.15, 0.05, 1.50),
-    ("Basmati rice",      "Grocery",         "per kg",         210, 1.00, 0.04, 0.80),
-    ("Cooking oil",       "Grocery",         "per 5 L",       2400, 1.05, 0.04, 2.00),
-    ("Onion",             "Fresh produce",   "per kg",         110, 1.00, 0.28, 0.50),
-    ("Potato",            "Fresh produce",   "per kg",          60, 1.00, 0.20, 2.50),
-    ("Chicken",           "Poultry",         "per kg",         560, 1.00, 0.08, 1.00),
-    ("Eggs",              "Dairy & protein", "per dozen",      340, 1.05, 0.06, 3.00),
-    ("Fresh milk",        "Dairy & protein", "per litre",      220, 1.02, 0.04, 1.20),
-    ("Petrol (super)",    "Energy",          "per litre",      268, 1.10, 0.04, 0.30),
-    ("Electricity",       "Energy",          "per kWh",         34, 1.25, 0.03, 2.30),
+    ("Wheat flour (atta)", "Grocery", "per 20 kg bag", 1950, 1.00, 0.05, 0.00),
+    ("Sugar", "Grocery", "per kg", 150, 1.15, 0.05, 1.50),
+    ("Basmati rice", "Grocery", "per kg", 210, 1.00, 0.04, 0.80),
+    ("Cooking oil", "Grocery", "per 5 L", 2400, 1.05, 0.04, 2.00),
+    ("Onion", "Fresh produce", "per kg", 110, 1.00, 0.28, 0.50),
+    ("Potato", "Fresh produce", "per kg", 60, 1.00, 0.20, 2.50),
+    ("Chicken", "Poultry", "per kg", 560, 1.00, 0.08, 1.00),
+    ("Eggs", "Dairy & protein", "per dozen", 340, 1.05, 0.06, 3.00),
+    ("Fresh milk", "Dairy & protein", "per litre", 220, 1.02, 0.04, 1.20),
+    ("Petrol (super)", "Energy", "per litre", 268, 1.10, 0.04, 0.30),
+    ("Electricity", "Energy", "per kWh", 34, 1.25, 0.03, 2.30),
 ]
 
 START_DATE = date(2023, 1, 1)
@@ -44,6 +45,7 @@ END_DATE = date(2026, 6, 30)
 
 # number of days per weekly step
 WEEK = 7
+
 
 # ---------------------------------------------------------------------------
 # Core growth path
@@ -83,7 +85,7 @@ def price_at(when: date, item) -> float:
     else:
         cumulative = 1.0
         for j in range(months):
-            cumulative *= (1.0 + _base_monthly_rate(j) * growth_mult)
+            cumulative *= 1.0 + _base_monthly_rate(j) * growth_mult
         base = anchor * cumulative
         k = months
 

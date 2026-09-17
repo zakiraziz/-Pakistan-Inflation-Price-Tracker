@@ -5,6 +5,7 @@ makes a push cheaper than a poll) plus the two endpoints that expose it:
 GET /api/live for the polling fallback and GET /api/stream for Server-Sent
 Events.
 """
+
 from __future__ import annotations
 
 import threading
@@ -16,6 +17,7 @@ import pytest
 @pytest.fixture()
 def client(seeded_db):
     import app as app_mod
+
     app_mod.app.config["TESTING"] = True
     with app_mod.app.test_client() as c:
         yield c
@@ -54,21 +56,20 @@ def test_revision_moves_only_when_approved_data_changes(seeded_db):
 
     con, _ = seeded_db
     before = live.revision()
-    assert live.revision() == before                     # stable when idle
+    assert live.revision() == before  # stable when idle
 
     _insert(con, db_mod.STATUS_PENDING, "2026-12-27")
-    assert live.revision() == before                     # staged != published
+    assert live.revision() == before  # staged != published
 
     _insert(con, db_mod.STATUS_APPROVED, "2026-12-20")
-    assert live.revision() != before                     # published data moved
+    assert live.revision() != before  # published data moved
 
 
 def test_bump_wakes_every_waiter():
     from core import live
 
     seen = live.tick()
-    threads = [threading.Thread(target=_wait_in_thread, args=(seen, 5.0))
-               for _ in range(3)]
+    threads = [threading.Thread(target=_wait_in_thread, args=(seen, 5.0)) for _ in range(3)]
     for t in threads:
         t.start()
     time.sleep(0.05)
@@ -82,7 +83,7 @@ def test_bump_wakes_every_waiter():
 def test_wait_times_out_when_nothing_changes(seeded_db):
     from core import live
 
-    live.revision()                    # sync the watcher's baseline first
+    live.revision()  # sync the watcher's baseline first
     seen = live.tick()
     start = time.monotonic()
     assert live.wait(seen, 0.3) == seen
@@ -96,4 +97,4 @@ def test_sse_frame_is_well_formed():
     assert frame.startswith("event: update\n")
     assert "data: {" in frame
     assert frame.endswith("\n\n")
-    assert "\n\n" not in frame[:-2]        # no stray blank line inside a frame
+    assert "\n\n" not in frame[:-2]  # no stray blank line inside a frame

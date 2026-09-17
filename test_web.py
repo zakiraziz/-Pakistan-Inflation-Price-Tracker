@@ -7,6 +7,7 @@ issues that the unit tests miss.
 
     python test_web.py        (from the project root, after seed.py)
 """
+
 from __future__ import annotations
 
 import json
@@ -101,9 +102,18 @@ def main():
             # dashboard HTML content markers
             _, html = http_get("/")
             html = html.decode("utf-8")
-            for marker in ["helpers.js", "app.js", 'id="kpis"', 'id="view"',
-                           'id="alertsPanel"', 'id="itemList"', 'id="categoryFilters"',
-                           'id="search"', 'class="tab"', 'id="updateNow"']:
+            for marker in [
+                "helpers.js",
+                "app.js",
+                'id="kpis"',
+                'id="view"',
+                'id="alertsPanel"',
+                'id="itemList"',
+                'id="categoryFilters"',
+                'id="search"',
+                'class="tab"',
+                'id="updateNow"',
+            ]:
                 assert marker in html, "missing marker: " + marker
             print("OK dashboard HTML contains all key UI elements")
 
@@ -133,14 +143,17 @@ def main():
             assert p["dates"] and len(p["items"]) == 11
             assert len(p["items"][0]["prices"]) == len(p["dates"])
             assert p["index"][0] == 100.0
-            print(f"OK /api/pivot -> {len(p['items'])} items x "
-                  f"{len(p['dates'])} dates, index 100 to {p['index'][-1]}")
+            print(
+                f"OK /api/pivot -> {len(p['items'])} items x "
+                f"{len(p['dates'])} dates, index 100 to {p['index'][-1]}"
+            )
 
             _, inf = http_get("/api/inflation?start=2023-01-01")
             iv = json.loads(inf)
             assert iv["annualized_pct"] is not None and iv["weeks"] >= 2
-            print(f"OK /api/inflation -> annualized={iv['annualized_pct']}% "
-                  f"YoY={iv['yoy_pct']}%")
+            print(
+                f"OK /api/inflation -> annualized={iv['annualized_pct']}% " f"YoY={iv['yoy_pct']}%"
+            )
 
             _, csvb = http_get("/api/series.csv?items=1")
             assert csvb.startswith(b"item,date,price")

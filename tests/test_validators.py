@@ -1,4 +1,5 @@
 """Validators: what gets auto-approved vs held for review."""
+
 from __future__ import annotations
 
 import db

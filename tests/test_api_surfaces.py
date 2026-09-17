@@ -1,4 +1,5 @@
 """Coverage for the remaining API surfaces, alert logic, and CSV source."""
+
 from __future__ import annotations
 
 import csv
@@ -10,9 +11,11 @@ import pytest
 @pytest.fixture()
 def client(tmp_db, monkeypatch):
     import seed
+
     con, path = tmp_db
     seed.load(con)
     import app as app_mod
+
     app_mod.app.config["TESTING"] = True
     yield app_mod.app.test_client()
     con.close()
@@ -49,14 +52,16 @@ def test_reject_specific_id_without_pending(client):
 
 
 def test_alerts_only_consider_approved_data(client):
-    from alert import compute_alerts, latest_alerts
     import db as db_mod
+    from alert import compute_alerts, latest_alerts
 
     con = db_mod.connect()
     # stage (do not approve) a huge jump -> alerts must ignore it
-    con.execute("INSERT INTO prices (item_id, date, price, source, method, "
-                "collected_at, status) VALUES (1, '2026-08-01', 99999.0, "
-                "'test', 'unit-test', 'now', 'pending')")
+    con.execute(
+        "INSERT INTO prices (item_id, date, price, source, method, "
+        "collected_at, status) VALUES (1, '2026-08-01', 99999.0, "
+        "'test', 'unit-test', 'now', 'pending')"
+    )
     con.commit()
     compute_alerts(con, threshold=5.0)
     assert con.execute("SELECT COUNT(*) AS c FROM alerts").fetchone()["c"] == 0
@@ -67,12 +72,14 @@ def test_alerts_only_consider_approved_data(client):
 
 def test_csv_source_parses_points(tmp_path):
     from ingest.sources import CSVSource
+
     path = os.path.join(tmp_path, "points.csv")
     with open(path, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=["item", "date", "price", "method"])
         writer.writeheader()
-        writer.writerow({"item": "Rice", "date": "2026-01-01", "price": "100.5",
-                         "method": "csv-import"})
+        writer.writerow(
+            {"item": "Rice", "date": "2026-01-01", "price": "100.5", "method": "csv-import"}
+        )
     points = CSVSource(path).fetch()
     assert len(points) == 1
     assert points[0]["item"] == "Rice"
@@ -82,6 +89,7 @@ def test_csv_source_parses_points(tmp_path):
 
 def test_pbs_source_requires_configuration():
     from ingest.sources import PBSWebSource
+
     with pytest.raises(NotImplementedError):
         PBSWebSource().fetch()
 

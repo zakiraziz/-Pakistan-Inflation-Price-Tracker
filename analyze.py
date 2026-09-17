@@ -7,6 +7,7 @@ accurate, data-grounded economics explainer.
 Usage:
     python analyze.py
 """
+
 from __future__ import annotations
 
 import db
@@ -42,8 +43,8 @@ def main():
     print(f"avg annualised     : {annual:.1f}% p.a.")
     print()
     print("per item (first -> latest):")
-    for name, cat, f, l, pct in lines:
-        print(f"  {name:<22} {cat:<16} {f:>8.2f} -> {l:>8.2f}  ({pct:+.1f}%)")
+    for name, cat, first_p, last_p, pct in lines:
+        print(f"  {name:<22} {cat:<16} {first_p:>8.2f} -> {last_p:>8.2f}  ({pct:+.1f}%)")
     con.close()
 
 

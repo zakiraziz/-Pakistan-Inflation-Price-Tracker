@@ -1,8 +1,9 @@
 """Full diagnostic: check every module, DB state, and run the server + tests."""
+
 import os
-import sys
 import sqlite3
 import subprocess
+import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -54,22 +55,14 @@ else:
         for tbl in ["items", "prices", "alerts", "ingestions"]:
             cnt = con.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
             print(f"  OK  {tbl}: {cnt} rows")
-        items = con.execute(
-            "SELECT id, name, category, unit FROM items ORDER BY id"
-        ).fetchall()
+        items = con.execute("SELECT id, name, category, unit FROM items ORDER BY id").fetchall()
         print(f"  OK  items ({len(items)}):")
         for i in items:
             print(f"      #{i[0]} {i[1]} ({i[2]}) {i[3]}")
-        approved = con.execute(
-            "SELECT COUNT(*) FROM prices WHERE status='approved'"
-        ).fetchone()[0]
+        approved = con.execute("SELECT COUNT(*) FROM prices WHERE status='approved'").fetchone()[0]
         print(f"  OK  approved prices: {approved}")
-        latest = con.execute(
-            "SELECT MAX(date) FROM prices WHERE status='approved'"
-        ).fetchone()[0]
-        earliest = con.execute(
-            "SELECT MIN(date) FROM prices WHERE status='approved'"
-        ).fetchone()[0]
+        latest = con.execute("SELECT MAX(date) FROM prices WHERE status='approved'").fetchone()[0]
+        earliest = con.execute("SELECT MIN(date) FROM prices WHERE status='approved'").fetchone()[0]
         print(f"  OK  date range: {earliest} -> {latest}")
         # Per-item check
         per_item = con.execute(
@@ -97,6 +90,7 @@ try:
         env=env,
     )
     import time
+
     time.sleep(4)
     if proc.poll() is not None:
         out = proc.stdout.read(2000).decode("utf-8", errors="replace")
@@ -106,6 +100,7 @@ try:
         # Hit healthz
         try:
             import urllib.request
+
             r = urllib.request.urlopen("http://127.0.0.1:5010/healthz", timeout=5)
             data = r.read().decode()
             print(f"  OK  /healthz: {data[:200]}")
@@ -130,7 +125,7 @@ try:
     if result.stderr:
         print("STDERR:", result.stderr[:500])
     lines = result.stdout.strip().splitlines()
-    summary = [l for l in lines if "passed" in l or "failed" in l or "error" in l.lower()]
+    summary = [ln for ln in lines if "passed" in ln or "failed" in ln or "error" in ln.lower()]
     print("  =>", summary[-1] if summary else "(no summary found)")
 except Exception as e:
     print(f"  FAIL  pytest: {e}")
@@ -138,7 +133,18 @@ except Exception as e:
 print()
 print("=== 5. SCRATCH ARTIFACTS ===")
 for name in os.listdir(ROOT):
-    if name.startswith("fresh") or name.startswith("rl_test") or name.startswith("server_live") or name.startswith("test_web") or name == "verify_results.txt" or name == "verify_server.log" or name == "_render_check.js" or name.startswith("dom") or name == "tail.b64" or name == "test_pipeline.py":
+    if (
+        name.startswith("fresh")
+        or name.startswith("rl_test")
+        or name.startswith("server_live")
+        or name.startswith("test_web")
+        or name == "verify_results.txt"
+        or name == "verify_server.log"
+        or name == "_render_check.js"
+        or name.startswith("dom")
+        or name == "tail.b64"
+        or name == "test_pipeline.py"
+    ):
         full = os.path.join(ROOT, name)
         size = os.path.getsize(full)
         print(f"  NOTE  scratch artifact: {name} ({size} bytes)")

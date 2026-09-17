@@ -17,8 +17,10 @@ Run locally:
     python app.py
 then open  http://127.0.0.1:5010
 """
+
 from __future__ import annotations
 
+import contextlib
 import os
 import time
 
@@ -36,7 +38,7 @@ app = Flask(__name__, static_folder="static", static_url_path="/static")
 app.config["FORCE_HTTPS"] = settings.force_https
 
 # --- caching (flask-caching; CACHE_TYPE=RedisCache to move to Redis) --------
-from flask_caching import Cache
+from flask_caching import Cache  # noqa: E402  (config must precede Cache init)
 
 app.config["CACHE_TYPE"] = settings.cache_type
 app.config["CACHE_DEFAULT_TIMEOUT"] = settings.cache_ttl
@@ -45,15 +47,19 @@ if settings.redis_url:
 cache = Cache(app)
 
 # --- rate limiting (Flask-Limiter) ------------------------------------------
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from flask_limiter import Limiter  # noqa: E402  (app/config must exist first)
+from flask_limiter.util import get_remote_address  # noqa: E402
 
-limiter = Limiter(get_remote_address, app=app,
-                  default_limits=[settings.rate_limit_default],
-                  storage_uri=settings.rate_limit_storage)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[settings.rate_limit_default],
+    storage_uri=settings.rate_limit_storage,
+    headers_enabled=True,
+)  # clients see their budget: X-RateLimit-*
 write_limit = settings.rate_limit_write
 
-install(app)          # security headers + structured error handling
+install(app)  # security headers + structured error handling
 logger = log.get_logger("app")
 
 DEFAULT_START = "2025-07-01"
@@ -69,10 +75,8 @@ def asset_version():
     """
     newest = 0.0
     for name in ("app.js", "helpers.js", "live.js", "style.css"):
-        try:
+        with contextlib.suppress(OSError):  # pragma: no cover - asset always shipped
             newest = max(newest, os.path.getmtime(os.path.join(BASE_DIR, "static", name)))
-        except OSError:  # pragma: no cover - asset always shipped
-            pass
     return str(int(newest))
 
 
@@ -85,12 +89,14 @@ def readyz():
     try:
         con = db.connect()
         con.execute("SELECT 1 FROM sqlite_master LIMIT 1")
-        approved = con.execute("SELECT COUNT(*) AS c FROM prices "
-                               "WHERE status = ?", (db.STATUS_APPROVED,)).fetchone()["c"]
+        approved = con.execute(
+            "SELECT COUNT(*) AS c FROM prices " "WHERE status = ?", (db.STATUS_APPROVED,)
+        ).fetchone()["c"]
         con.close()
         ready = approved > 0
-        return jsonify({"status": "ready" if ready else "not_ready",
-                        "approved_points": approved}), (200 if ready else 503)
+        return jsonify(
+            {"status": "ready" if ready else "not_ready", "approved_points": approved}
+        ), (200 if ready else 503)
     except Exception as exc:  # pragma: no cover - defensive
         return jsonify({"status": "not_ready", "error": str(exc)}), 503
 
@@ -101,8 +107,10 @@ def healthz():
     try:
         con = db.connect()
         detail["items"] = len(db.get_items(con))
-        row = con.execute("SELECT MAX(date) AS d, COUNT(*) AS c FROM prices "
-                          "WHERE status = ?", (db.STATUS_APPROVED,)).fetchone()
+        row = con.execute(
+            "SELECT MAX(date) AS d, COUNT(*) AS c FROM prices " "WHERE status = ?",
+            (db.STATUS_APPROVED,),
+        ).fetchone()
         detail["latest_date"] = row["d"]
         detail["approved_points"] = row["c"]
         detail["pending_points"] = db.count_status(con, db.STATUS_PENDING)
@@ -126,8 +134,7 @@ def index():
 @app.route("/methodology")
 def methodology():
     """Render the index methodology (source: docs/methodology.md)."""
-    with open(os.path.join(BASE_DIR, "static", "methodology.html"),
-              encoding="utf-8") as f:
+    with open(os.path.join(BASE_DIR, "static", "methodology.html"), encoding="utf-8") as f:
         return render_template_string(f.read())
 
 
@@ -138,8 +145,10 @@ def api_items():
     rows = db.get_items(con)
     con.close()
     return jsonify(
-        [{"id": r["id"], "name": r["name"], "category": r["category"],
-          "unit": r["unit"]} for r in rows]
+        [
+            {"id": r["id"], "name": r["name"], "category": r["category"], "unit": r["unit"]}
+            for r in rows
+        ]
     )
 
 
@@ -158,9 +167,11 @@ def _series_between(start, end, ids, status=db.STATUS_APPROVED):
     if ids is None:
         ids = [r["id"] for r in db.get_items(con)]
     ph = ",".join("?" * len(ids))
-    q = ("SELECT i.name AS name, p.date AS date, p.price AS price "
-         "FROM prices p JOIN items i ON i.id = p.item_id "
-         "WHERE p.status = ? AND p.item_id IN ({})".format(ph))
+    q = (
+        "SELECT i.name AS name, p.date AS date, p.price AS price "
+        "FROM prices p JOIN items i ON i.id = p.item_id "
+        f"WHERE p.status = ? AND p.item_id IN ({ph})"
+    )
     params = [status, *ids]
     if start:
         q += " AND p.date >= ?"
@@ -179,9 +190,7 @@ def _series_between(start, end, ids, status=db.STATUS_APPROVED):
 def api_series():
     start, end, ids = _parse_window()
     rows = _series_between(start, end, ids)
-    return jsonify(
-        [{"name": r["name"], "date": r["date"], "price": r["price"]} for r in rows]
-    )
+    return jsonify([{"name": r["name"], "date": r["date"], "price": r["price"]} for r in rows])
 
 
 @app.route("/api/index")
@@ -197,9 +206,7 @@ def api_index():
     if not dates:
         return jsonify([])
     base = sums[dates[0]]
-    return jsonify(
-        [{"date": d, "index": round(sums[d] / base * 100, 2)} for d in dates]
-    )
+    return jsonify([{"date": d, "index": round(sums[d] / base * 100, 2)} for d in dates])
 
 
 @app.route("/api/metrics")
@@ -225,17 +232,19 @@ def api_metrics():
     riser = max(stats, key=lambda t: t[1]) if stats else None
     faller = min(stats, key=lambda t: t[1]) if stats else None
     dates = sorted({r["date"] for r in rows})
-    return jsonify({
-        "count": len(names),
-        "weeks": len(dates),
-        "first_date": dates[0],
-        "last_date": dates[-1],
-        "basket_pct": round(basket_pct, 2),
-        "start_total": round(first_tot, 2),
-        "end_total": round(last_tot, 2),
-        "biggest_riser": {"name": riser[0], "pct": round(riser[1], 2)} if riser else None,
-        "biggest_faller": {"name": faller[0], "pct": round(faller[1], 2)} if faller else None,
-    })
+    return jsonify(
+        {
+            "count": len(names),
+            "weeks": len(dates),
+            "first_date": dates[0],
+            "last_date": dates[-1],
+            "basket_pct": round(basket_pct, 2),
+            "start_total": round(first_tot, 2),
+            "end_total": round(last_tot, 2),
+            "biggest_riser": {"name": riser[0], "pct": round(riser[1], 2)} if riser else None,
+            "biggest_faller": {"name": faller[0], "pct": round(faller[1], 2)} if faller else None,
+        }
+    )
 
 
 @app.route("/api/pivot")
@@ -247,15 +256,19 @@ def api_pivot():
     if ids is None:
         ids = [r["id"] for r in db.get_items(con)]
     ph = ",".join("?" * len(ids))
-    q = ("SELECT i.name AS name, i.category AS category, i.unit AS unit, "
-         "       p.date AS date, p.price AS price "
-         "FROM prices p JOIN items i ON i.id = p.item_id "
-         "WHERE p.item_id IN ({})".format(ph))
+    q = (
+        "SELECT i.name AS name, i.category AS category, i.unit AS unit, "
+        "       p.date AS date, p.price AS price "
+        "FROM prices p JOIN items i ON i.id = p.item_id "
+        f"WHERE p.item_id IN ({ph})"
+    )
     params = list(ids)
     if start:
-        q += " AND p.date >= ?"; params.append(start)
+        q += " AND p.date >= ?"
+        params.append(start)
     if end:
-        q += " AND p.date <= ?"; params.append(end)
+        q += " AND p.date <= ?"
+        params.append(end)
     q += " ORDER BY p.date"
     rows = con.execute(q, params).fetchall()
     con.close()
@@ -265,20 +278,25 @@ def api_pivot():
         if r["date"] not in seen:
             seen[r["date"]] = 1
             dates.append(r["date"])
-        by.setdefault(r["name"],
-                      {"category": r["category"], "unit": r["unit"], "prices": []}
-                      )["prices"].append(r["price"])
+        by.setdefault(r["name"], {"category": r["category"], "unit": r["unit"], "prices": []})[
+            "prices"
+        ].append(r["price"])
 
     items_out = []
     for name, d in by.items():
         px = d["prices"]
         first, last = px[0], px[-1]
-        items_out.append({
-            "name": name, "category": d["category"], "unit": d["unit"],
-            "first": first, "last": last,
-            "pct": round((last - first) / first * 100, 2) if first else 0.0,
-            "prices": px,
-        })
+        items_out.append(
+            {
+                "name": name,
+                "category": d["category"],
+                "unit": d["unit"],
+                "first": first,
+                "last": last,
+                "pct": round((last - first) / first * 100, 2) if first else 0.0,
+                "prices": px,
+            }
+        )
 
     index = []
     if dates and by:
@@ -309,7 +327,9 @@ def api_inflation():
     annualized = ((last_tot / base) ** (365.0 / days) - 1) * 100 if days > 0 else 0.0
     avg_weekly = ((last_tot / base) ** (1.0 / max(1, len(dates) - 1)) - 1) * 100
 
-    from datetime import date as _date, timedelta
+    from datetime import date as _date
+    from datetime import timedelta
+
     last_d = _date.fromisoformat(dates[-1])
     target = last_d - timedelta(days=364)
     yoy = None
@@ -317,15 +337,17 @@ def api_inflation():
         if _date.fromisoformat(dt) >= target:
             yoy = (last_tot / sums[dt] - 1) * 100
             break
-    return jsonify({
-        "weeks": len(dates),
-        "first_date": dates[0],
-        "last_date": dates[-1],
-        "basket_pct": round(basket_pct, 2),
-        "annualized_pct": round(annualized, 2),
-        "avg_weekly_pct": round(avg_weekly, 2),
-        "yoy_pct": round(yoy, 2) if yoy is not None else None,
-    })
+    return jsonify(
+        {
+            "weeks": len(dates),
+            "first_date": dates[0],
+            "last_date": dates[-1],
+            "basket_pct": round(basket_pct, 2),
+            "annualized_pct": round(annualized, 2),
+            "avg_weekly_pct": round(avg_weekly, 2),
+            "yoy_pct": round(yoy, 2) if yoy is not None else None,
+        }
+    )
 
 
 @app.route("/api/series.csv")
@@ -359,9 +381,17 @@ def api_alerts():
     rows = latest_alerts(con, threshold=threshold, start=start, end=end)
     con.close()
     return jsonify(
-        [{"name": r["name"], "category": r["category"], "date": r["date"],
-          "price": r["price"], "prev_price": r["prev_price"],
-          "pct": r["pct"]} for r in rows]
+        [
+            {
+                "name": r["name"],
+                "category": r["category"],
+                "date": r["date"],
+                "price": r["price"],
+                "prev_price": r["prev_price"],
+                "pct": r["pct"],
+            }
+            for r in rows
+        ]
     )
 
 
@@ -396,12 +426,11 @@ def api_stream():
             current = live.wait(seen, live.HEARTBEAT_SECONDS)
             changed = current != seen
             seen = current
-            yield live.sse_frame("update" if changed else "heartbeat",
-                                 live.snapshot())
+            yield live.sse_frame("update" if changed else "heartbeat", live.snapshot())
 
     resp = Response(frames(), mimetype="text/event-stream")
     resp.headers["Cache-Control"] = "no-store"
-    resp.headers["X-Accel-Buffering"] = "no"    # never buffer behind a proxy
+    resp.headers["X-Accel-Buffering"] = "no"  # never buffer behind a proxy
     resp.headers["Connection"] = "keep-alive"
     return resp
 
@@ -409,17 +438,20 @@ def api_stream():
 @app.route("/ingest/next", methods=["POST"])
 @limiter.limit(write_limit)
 def run_job():
-    import job
     from datetime import date
+
+    import job
+
     con = db.connect()
     when = date.today()
     if request.is_json and request.get_json(silent=True).get("date"):
         when = date.fromisoformat(request.get_json()["date"])
-    auto_approve = request.get_json(silent=True) is None or \
-        bool(request.get_json(silent=True).get("auto_approve", True))
+    auto_approve = request.get_json(silent=True) is None or bool(
+        request.get_json(silent=True).get("auto_approve", True)
+    )
     n, snap, counts = job.add_next_week(con, when, auto_approve=auto_approve)
     con.close()
-    cache.clear()          # data changed -> invalidate cached API responses
+    cache.clear()  # data changed -> invalidate cached API responses
     live.bump("ingest run")  # and wake every open dashboard stream
     logger.info("ingest run: %s", counts)
     return jsonify({"inserted": n, "for_week": snap.isoformat(), "counts": counts})
@@ -440,17 +472,20 @@ def admin_approve():
     payload = request.get_json(silent=True) or {}
     con = db.connect()
     if payload.get("all"):
-        n = con.execute("UPDATE prices SET status = ?, review_note = 'approved "
-                        "by admin' WHERE status = ?",
-                        (db.STATUS_APPROVED, db.STATUS_PENDING)).rowcount
+        n = con.execute(
+            "UPDATE prices SET status = ?, review_note = 'approved " "by admin' WHERE status = ?",
+            (db.STATUS_APPROVED, db.STATUS_PENDING),
+        ).rowcount
     else:
         ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
         n = 0
         for pid in ids:
-            n += con.execute("UPDATE prices SET status = ?, "
-                             "review_note = 'approved by admin' "
-                             "WHERE id = ? AND status = ?",
-                             (db.STATUS_APPROVED, pid, db.STATUS_PENDING)).rowcount
+            n += con.execute(
+                "UPDATE prices SET status = ?, "
+                "review_note = 'approved by admin' "
+                "WHERE id = ? AND status = ?",
+                (db.STATUS_APPROVED, pid, db.STATUS_PENDING),
+            ).rowcount
     con.commit()
     con.close()
     if n:
@@ -467,17 +502,20 @@ def admin_reject():
     payload = request.get_json(silent=True) or {}
     con = db.connect()
     if payload.get("all"):
-        n = con.execute("UPDATE prices SET status = ?, review_note = 'rejected "
-                        "by admin' WHERE status = ?",
-                        (db.STATUS_REJECTED, db.STATUS_PENDING)).rowcount
+        n = con.execute(
+            "UPDATE prices SET status = ?, review_note = 'rejected " "by admin' WHERE status = ?",
+            (db.STATUS_REJECTED, db.STATUS_PENDING),
+        ).rowcount
     else:
         ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
         n = 0
         for pid in ids:
-            n += con.execute("UPDATE prices SET status = ?, "
-                             "review_note = 'rejected by admin' "
-                             "WHERE id = ? AND status = ?",
-                             (db.STATUS_REJECTED, pid, db.STATUS_PENDING)).rowcount
+            n += con.execute(
+                "UPDATE prices SET status = ?, "
+                "review_note = 'rejected by admin' "
+                "WHERE id = ? AND status = ?",
+                (db.STATUS_REJECTED, pid, db.STATUS_PENDING),
+            ).rowcount
     con.commit()
     con.close()
     cache.clear()
@@ -489,5 +527,4 @@ def admin_reject():
 
 if __name__ == "__main__":
     # Debug mode is opt-in (FLASK_DEBUG=1); never on by default.
-    app.run(host="0.0.0.0", port=settings.port,
-            debug=os.environ.get("FLASK_DEBUG") == "1")
+    app.run(host="0.0.0.0", port=settings.port, debug=os.environ.get("FLASK_DEBUG") == "1")

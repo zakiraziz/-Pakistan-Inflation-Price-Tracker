@@ -16,10 +16,12 @@ Statuses:
 
 Swap to Postgres by running against a DATABASE_URL; the schema is the same.
 """
+
 from __future__ import annotations
 
 import os
 import sqlite3
+from datetime import UTC
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -82,7 +84,7 @@ CREATE INDEX IF NOT EXISTS idx_alerts_item_date ON alerts(item_id, date);
 
 
 def connect(path: str = None) -> sqlite3.Connection:
-    path = path or DB_PATH            # resolved at call time (test-friendly)
+    path = path or DB_PATH  # resolved at call time (test-friendly)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
@@ -107,9 +109,9 @@ def get_item_map(con: sqlite3.Connection) -> dict:
 
 
 def count_status(con: sqlite3.Connection, status: str = STATUS_PENDING) -> int:
-    return con.execute(
-        "SELECT COUNT(*) AS c FROM prices WHERE status = ?", (status,)
-    ).fetchone()["c"]
+    return con.execute("SELECT COUNT(*) AS c FROM prices WHERE status = ?", (status,)).fetchone()[
+        "c"
+    ]
 
 
 def pending_points(con: sqlite3.Connection, limit: int = 200):
@@ -123,19 +125,28 @@ def pending_points(con: sqlite3.Connection, limit: int = 200):
     ).fetchall()
 
 
-def record_ingestion(con: sqlite3.Connection, source: str, method: str, target_date,
-                     counts: dict) -> int:
+def record_ingestion(
+    con: sqlite3.Connection, source: str, method: str, target_date, counts: dict
+) -> int:
     cur = con.execute(
         "INSERT INTO ingestions (source, method, ran_at, target_date, "
         "points_total, points_approved, points_pending, points_rejected) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (source, method, _utc_now(), target_date,
-         counts.get("total", 0), counts.get("approved", 0),
-         counts.get("pending", 0), counts.get("rejected", 0)),
+        (
+            source,
+            method,
+            _utc_now(),
+            target_date,
+            counts.get("total", 0),
+            counts.get("approved", 0),
+            counts.get("pending", 0),
+            counts.get("rejected", 0),
+        ),
     )
     return cur.lastrowid
 
 
 def _utc_now() -> str:
-    from datetime import datetime, timezone
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    from datetime import datetime
+
+    return datetime.now(UTC).isoformat(timespec="seconds")

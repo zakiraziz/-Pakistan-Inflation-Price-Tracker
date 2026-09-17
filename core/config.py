@@ -7,6 +7,7 @@ Includes a tiny dependency-free `.env` loader so local development uses the
 same env-var contract as production (see `.env.example`). Real environment
 variables always win over `.env` values; nothing here is a secret by default.
 """
+
 from __future__ import annotations
 
 import os
@@ -80,7 +81,7 @@ class Config:
     database_url: str
 
     @classmethod
-    def from_env(cls) -> "Config":
+    def from_env(cls) -> Config:
         _load_env_file(BASE_DIR / ".env")
         return cls(
             port=_env_int("PORT", 5010),

@@ -23,6 +23,7 @@ Production notes:
     swap to cron / GitHub Actions / Celery beat) so it is not tied to the web
     process lifetime.
 """
+
 from __future__ import annotations
 
 import sys
@@ -47,10 +48,19 @@ def run_ingest() -> dict:
     try:
         inserted, snap, counts = add_next_week(con, date.today())
         pending = db.count_status(con, db.STATUS_PENDING)
-        logger.info("ingestion finished: inserted=%s for_week=%s counts=%s "
-                    "pending=%s", inserted, snap, counts, pending)
-        result = {"inserted": inserted, "for_week": snap.isoformat(),
-                  "counts": counts, "pending": pending}
+        logger.info(
+            "ingestion finished: inserted=%s for_week=%s counts=%s " "pending=%s",
+            inserted,
+            snap,
+            counts,
+            pending,
+        )
+        result = {
+            "inserted": inserted,
+            "for_week": snap.isoformat(),
+            "counts": counts,
+            "pending": pending,
+        }
     finally:
         con.close()
     # add_next_week() commits internally; only now can readers see the new week,
@@ -84,19 +94,33 @@ def main() -> int:
         return 0
 
     from apscheduler.schedulers.background import BackgroundScheduler
+
     sched = BackgroundScheduler(timezone="UTC")
     every = interval_seconds()
     if every > 0:
-        sched.add_job(run_ingest, "interval", seconds=every,
-                      id="interval-price-ingest", max_instances=1, coalesce=True)
-        logger.info("scheduler started (ingesting every %ss). Ctrl+C to stop.",
-                    every)
+        sched.add_job(
+            run_ingest,
+            "interval",
+            seconds=every,
+            id="interval-price-ingest",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info("scheduler started (ingesting every %ss). Ctrl+C to stop.", every)
     else:
-        sched.add_job(run_ingest, "cron", day_of_week=CRON_DAY_OF_WEEK,
-                      hour=CRON_HOUR, minute=0, id="weekly-price-ingest",
-                      max_instances=1, coalesce=True)
-        logger.info("scheduler started (cron %s %s:00 UTC). Ctrl+C to stop.",
-                    CRON_DAY_OF_WEEK, CRON_HOUR)
+        sched.add_job(
+            run_ingest,
+            "cron",
+            day_of_week=CRON_DAY_OF_WEEK,
+            hour=CRON_HOUR,
+            minute=0,
+            id="weekly-price-ingest",
+            max_instances=1,
+            coalesce=True,
+        )
+        logger.info(
+            "scheduler started (cron %s %s:00 UTC). Ctrl+C to stop.", CRON_DAY_OF_WEEK, CRON_HOUR
+        )
     sched.start()
     try:
         while True:

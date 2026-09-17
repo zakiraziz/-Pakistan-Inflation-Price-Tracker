@@ -8,6 +8,7 @@ Security response headers and structured error handling.
 - Errors never leak stack traces: exceptions are logged server-side and the
   client gets a predictable JSON envelope (APIs) or a plain page (browsers).
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,17 +18,19 @@ from werkzeug.exceptions import HTTPException
 
 logger = logging.getLogger("app.security")
 
-CSP = "; ".join([
-    "default-src 'self'",
-    "script-src 'self' https://cdn.jsdelivr.net",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data:",
-    "connect-src 'self'",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-])
+CSP = "; ".join(
+    [
+        "default-src 'self'",
+        "script-src 'self' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data:",
+        "connect-src 'self'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ]
+)
 
 ERROR_PAGE = """
 <!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -59,14 +62,15 @@ def install(app) -> None:
     def _headers(response):  # pragma: no cover - exercised via integration
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
-        response.headers.setdefault("Referrer-Policy",
-                                    "strict-origin-when-cross-origin")
-        response.headers.setdefault("Permissions-Policy",
-                                    "camera=(), microphone=(), geolocation=()")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
         response.headers.setdefault("Content-Security-Policy", CSP)
         if app.config.get("FORCE_HTTPS"):
-            response.headers.setdefault("Strict-Transport-Security",
-                                        "max-age=31536000; includeSubDomains")
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
         return response
 
     @app.errorhandler(404)

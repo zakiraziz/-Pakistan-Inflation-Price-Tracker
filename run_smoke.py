@@ -1,4 +1,6 @@
 """End-to-end smoke test for Pakistan Inflation Price Tracker."""
+
+import contextlib
 import json
 import os
 import subprocess
@@ -7,7 +9,9 @@ import time
 import urllib.error
 import urllib.request
 
-APP_DIR = r"c:\Users\zakir\Desktop\Pakistan Inflation  Price Tracker\-Pakistan-Inflation-Price-Tracker"
+APP_DIR = (
+    r"c:\Users\zakir\Desktop\Pakistan Inflation  Price Tracker\-Pakistan-Inflation-Price-Tracker"
+)
 BASE = "http://127.0.0.1:5010"
 
 # Find the real python executable - sys.executable may point to a broken symlink,
@@ -15,7 +19,14 @@ BASE = "http://127.0.0.1:5010"
 REAL_PYTHON = os.path.join(sys.prefix, "bin", "python.exe")
 if not os.path.isfile(REAL_PYTHON):
     # Fallback: scan .venv/bin for python.exe
-    for name in ("python.exe", "python3.exe", "python3.11.exe", "python3.12.exe", "python3.13.exe", "python3.14.exe"):
+    for name in (
+        "python.exe",
+        "python3.exe",
+        "python3.11.exe",
+        "python3.12.exe",
+        "python3.13.exe",
+        "python3.14.exe",
+    ):
         candidate = os.path.join(sys.prefix, "bin", name)
         if os.path.isfile(candidate) and os.path.getsize(candidate) > 1000000:
             REAL_PYTHON = candidate
@@ -85,17 +96,18 @@ def wait_for_server(timeout=30):
 
 def start_server():
     # Kill any existing process on port 5010 (don't kill all python.exe!)
-    try:
+    with contextlib.suppress(Exception):
         subprocess.run(
-            ["powershell", "-Command",
-             "(Get-NetTCPConnection -LocalPort 5010 -ErrorAction SilentlyContinue).OwningProcess | "
-             "ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"],
+            [
+                "powershell",
+                "-Command",
+                "(Get-NetTCPConnection -LocalPort 5010 -ErrorAction SilentlyContinue).OwningProcess | "
+                "ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }",
+            ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=10,
         )
-    except Exception:
-        pass
     time.sleep(1)
     # Use REAL_PYTHON which we resolved at module load time
     proc = subprocess.Popen(
@@ -136,7 +148,11 @@ if __name__ == "__main__":
     if s == 200:
         check("healthz.status == ok", d.get("status") == "ok", f"got={d.get('status')}")
         check("healthz.items == 11", d.get("items") == 11, f"got={d.get('items')}")
-        check("healthz.approved_points > 0", d.get("approved_points", 0) > 0, f"got={d.get('approved_points')}")
+        check(
+            "healthz.approved_points > 0",
+            d.get("approved_points", 0) > 0,
+            f"got={d.get('approved_points')}",
+        )
 
     s, d = get_json(f"{BASE}/api/live")
     check("GET /api/live 200", s == 200)
@@ -178,7 +194,11 @@ if __name__ == "__main__":
     s, text = get_text(f"{BASE}/api/series.csv?start=2026-01-01")
     check("GET /api/series.csv 200", s == 200, f"status={s}")
     if s == 200:
-        check("/api/series.csv has header", "item,date,price" in text, f"first 100 chars={text[:100]!r}")
+        check(
+            "/api/series.csv has header",
+            "item,date,price" in text,
+            f"first 100 chars={text[:100]!r}",
+        )
 
     s, d = get_json(f"{BASE}/api/pivot?start=2026-01-01")
     check("GET /api/pivot 200", s == 200)
@@ -239,5 +259,3 @@ if __name__ == "__main__":
     print("=" * 60)
     stop_server(server_proc)
     sys.exit(0 if failed == 0 else 1)
-
-

@@ -11,14 +11,15 @@ This is the "ingest" step of the data pipeline: it reads the deterministic
 source (model.py), validates/records provenance, and writes an approved
 baseline into the database.
 """
+
 from __future__ import annotations
 
 import sys
 
 import db
 import model
-from ingest.sources import SeedSource
 from ingest.pipeline import ingest
+from ingest.sources import SeedSource
 
 
 def load(con):
@@ -38,8 +39,14 @@ def load(con):
         )
 
     points = SeedSource().fetch()
-    counts = ingest(con, points, source_name="seed", method="generator",
-                    auto_approve=True, target_date=model.END_DATE.isoformat())
+    counts = ingest(
+        con,
+        points,
+        source_name="seed",
+        method="generator",
+        auto_approve=True,
+        target_date=model.END_DATE.isoformat(),
+    )
     return counts
 
 
@@ -70,6 +77,8 @@ if __name__ == "__main__":
         sys.exit(0)
     counts = load(con)
     show(con)
-    print(f"loaded {db.count_status(con, db.STATUS_APPROVED)} approved price rows "
-          f"({counts['total']} total) -> {db.DB_PATH}")
+    print(
+        f"loaded {db.count_status(con, db.STATUS_APPROVED)} approved price rows "
+        f"({counts['total']} total) -> {db.DB_PATH}"
+    )
     con.close()

@@ -1,14 +1,17 @@
 """Generate verify.py to avoid PowerShell quoting issues."""
+
 from pathlib import Path
 
 parts: list[str] = []
 
-parts.append('"""Verify the Pakistan Inflation / Price Tracker.\n'
-             '\n'
-             'Boots the Flask server, hits every API and HTML endpoint over HTTP,\n'
-             'checks the dashboard DOM for the elements app.js expects, and reports PASS/FAIL.\n'
-             'Run with:  python verify.py\n'
-             '"""')
+parts.append(
+    '"""Verify the Pakistan Inflation / Price Tracker.\n'
+    "\n"
+    "Boots the Flask server, hits every API and HTML endpoint over HTTP,\n"
+    "checks the dashboard DOM for the elements app.js expects, and reports PASS/FAIL.\n"
+    "Run with:  python verify.py\n"
+    '"""'
+)
 
 parts.append("import builtins")
 parts.append("import json")
@@ -29,15 +32,15 @@ parts.append("_FAIL = 0")
 parts.append("_FAIL_LIST: list[tuple[str, str]] = []")
 parts.append("")
 parts.append("")
-parts.append("def ok(desc: str, cond: bool, note: str = \"\"):")
+parts.append('def ok(desc: str, cond: bool, note: str = ""):')
 parts.append("    global _PASS, _FAIL")
 parts.append("    if cond:")
 parts.append("        _PASS += 1")
-parts.append("        real_print(f\"  OK   {desc}\")")
+parts.append('        real_print(f"  OK   {desc}")')
 parts.append("    else:")
 parts.append("        _FAIL += 1")
 parts.append("        _FAIL_LIST.append((desc, note))")
-parts.append("        real_print(f\"  FAIL {desc}\" + (f\"  :: {note}\" if note else \"\"))")
+parts.append('        real_print(f"  FAIL {desc}" + (f"  :: {note}" if note else ""))')
 parts.append("")
 parts.append("")
 parts.append("def get(path: str, timeout: int = 8):")
@@ -107,23 +110,25 @@ parts.append("log('Server ready.'); time.sleep(0.5)")
 parts.append("")
 
 # ---- helpers for API + HTML checks ----
-parts.append("R = '2025-07-01'\n"
-             "E = '2026-01-01'\n"
-             "def Q(**kw):\n"
-             "    return '?' + urllib.parse.urlencode({k: v for k, v in kw.items() if v is not None})\n"
-             "\n"
-             "def html_get(path):\n"
-             "    st, raw, ct = get(path)\n"
-             "    if st != 200:\n"
-             "        return None, None, f'status={st}'\n"
-             "    return raw.decode('utf-8', errors='replace'), ct, None\n"
-             "\n"
-             "def check_dom(html, ids):\n"
-             "    return [(_id, (_id in html and f'id=\"{_id}\"' in html)) for _id in ids]\n"
-             "\n"
-             "def check_includes(html, needles):\n"
-             "    return [(n, (n in html)) for n in needles]\n"
-             "\n")
+parts.append(
+    "R = '2025-07-01'\n"
+    "E = '2026-01-01'\n"
+    "def Q(**kw):\n"
+    "    return '?' + urllib.parse.urlencode({k: v for k, v in kw.items() if v is not None})\n"
+    "\n"
+    "def html_get(path):\n"
+    "    st, raw, ct = get(path)\n"
+    "    if st != 200:\n"
+    "        return None, None, f'status={st}'\n"
+    "    return raw.decode('utf-8', errors='replace'), ct, None\n"
+    "\n"
+    "def check_dom(html, ids):\n"
+    "    return [(_id, (_id in html and f'id=\"{_id}\"' in html)) for _id in ids]\n"
+    "\n"
+    "def check_includes(html, needles):\n"
+    "    return [(n, (n in html)) for n in needles]\n"
+    "\n"
+)
 
-Path('verify.py').write_text('\n'.join(parts), encoding='utf-8')
-print('Part A written:', len(parts), 'fragments')
+Path("verify.py").write_text("\n".join(parts), encoding="utf-8")
+print("Part A written:", len(parts), "fragments")

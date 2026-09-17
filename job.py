@@ -13,6 +13,7 @@ Usage:
 
 After inserting new data it recomputes jump alerts and prints them.
 """
+
 from __future__ import annotations
 
 import sys
@@ -24,8 +25,7 @@ from alert import compute_alerts
 from ingest.pipeline import ingest
 
 
-def add_next_week(con, when: date, threshold: float = 5.0,
-                  auto_approve: bool = True):
+def add_next_week(con, when: date, threshold: float = 5.0, auto_approve: bool = True):
     """Ingest one weekly observation per item for the week containing `when`.
 
     Points flow through the validated ingestion pipeline (provenance +
@@ -37,12 +37,19 @@ def add_next_week(con, when: date, threshold: float = 5.0,
     snap = model.START_DATE + timedelta(days=snap_days)
     iso = snap.isoformat()
 
-    points = [{"item": item[0], "date": iso,
-               "price": model.price_at(snap, item), "method": "generator"}
-              for item in model.ITEMS]
+    points = [
+        {"item": item[0], "date": iso, "price": model.price_at(snap, item), "method": "generator"}
+        for item in model.ITEMS
+    ]
 
-    counts = ingest(con, points, source_name="weekly-job", method="generator",
-                    auto_approve=auto_approve, target_date=iso)
+    counts = ingest(
+        con,
+        points,
+        source_name="weekly-job",
+        method="generator",
+        auto_approve=auto_approve,
+        target_date=iso,
+    )
     inserted = counts["approved"] + counts["pending"]
 
     # recompute alerts over approved data for this new week
@@ -65,8 +72,10 @@ if __name__ == "__main__":
 
     n, snap, counts = add_next_week(con, when, threshold, auto_approve)
     if n:
-        print(f"[job] inserted {n} rows for week of {snap.isoformat()} "
-              f"(snapped from {when.isoformat()})  {counts}")
+        print(
+            f"[job] inserted {n} rows for week of {snap.isoformat()} "
+            f"(snapped from {when.isoformat()})  {counts}"
+        )
     else:
         print(f"[job] week of {snap.isoformat()} already present; nothing to do")
 
@@ -78,8 +87,10 @@ if __name__ == "__main__":
     if rows:
         print("[job] alerts raised:")
         for r in rows:
-            print(f"  {r['name']:<22} {r['date']} Rs {r['price']:>8.2f} "
-                  f"(+{r['pct']}% vs prev {r['prev_price']:>7.2f})")
+            print(
+                f"  {r['name']:<22} {r['date']} Rs {r['price']:>8.2f} "
+                f"(+{r['pct']}% vs prev {r['prev_price']:>7.2f})"
+            )
     else:
         print("[job] no alerts above threshold")
     pending = db.count_status(con, db.STATUS_PENDING)

@@ -1,6 +1,6 @@
 """Full inventory + integrity check for the Pakistan Inflation Price Tracker."""
+
 import os
-import sys
 import sqlite3
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -116,7 +116,9 @@ try:
     print(f"Earliest approved date: {cur.fetchone()[0]}")
 
     # spot-check: each item has at least 20 approved points
-    cur.execute("SELECT i.name, COUNT(p.id) FROM items i LEFT JOIN prices p ON p.item_id = i.id AND p.status = 'approved' GROUP BY i.id")
+    cur.execute(
+        "SELECT i.name, COUNT(p.id) FROM items i LEFT JOIN prices p ON p.item_id = i.id AND p.status = 'approved' GROUP BY i.id"
+    )
     print("\nPer-item approved counts:")
     for name, cnt in cur.fetchall():
         flag = "" if cnt >= 20 else "  ← LOW"
@@ -140,8 +142,16 @@ for pkg_init in ["core/__init__.py", "ingest/__init__.py", "tests/__init__.py"]:
 
 print()
 print("=== STATIC ASSET SIZES ===")
-for name in ["index.html", "app.js", "helpers.js", "live.js", "style.css",
-             "favicon.svg", "methodology.html", "explainer.html"]:
+for name in [
+    "index.html",
+    "app.js",
+    "helpers.js",
+    "live.js",
+    "style.css",
+    "favicon.svg",
+    "methodology.html",
+    "explainer.html",
+]:
     full = os.path.join(ROOT, "static", name)
     if os.path.isfile(full):
         size = os.path.getsize(full)

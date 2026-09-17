@@ -1,4 +1,5 @@
 """core/: config, security headers, error handling, readiness."""
+
 from __future__ import annotations
 
 
@@ -34,6 +35,7 @@ def test_readyz_reports_ready_when_data_exists(client):
 
 def test_config_reads_env_overrides(monkeypatch):
     from core.config import Config
+
     monkeypatch.setenv("PORT", "9001")
     monkeypatch.setenv("CACHE_TYPE", "RedisCache")
     cfg = Config.from_env()
@@ -43,6 +45,7 @@ def test_config_reads_env_overrides(monkeypatch):
 
 def test_config_env_file_beats_defaults(tmp_path, monkeypatch):
     from core import config as config_mod
+
     env_file = tmp_path / ".env"
     env_file.write_text("PORT=9002\n# comment\nBAD_LINE\n", encoding="utf-8")
     monkeypatch.setattr(config_mod, "BASE_DIR", tmp_path)

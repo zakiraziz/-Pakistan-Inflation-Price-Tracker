@@ -20,12 +20,13 @@ Writers that know they changed the data (ingest, approve, reject) call
 :func:`bump` to wake listeners immediately; the watcher is the safety net for
 writes performed by another process (a second web worker, or scheduler.py).
 """
+
 from __future__ import annotations
 
 import json
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import db
 import log
@@ -67,7 +68,7 @@ def _aggregate() -> dict | None:
         return None
     finally:
         con.close()
-    return {k: row[k] for k in row.keys()}
+    return dict(row)
 
 
 def _stamp(row: dict) -> str:
@@ -78,7 +79,7 @@ def _stamp(row: dict) -> str:
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def revision() -> str:

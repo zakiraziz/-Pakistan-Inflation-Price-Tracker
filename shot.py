@@ -6,6 +6,7 @@ content is present in the DOM, and save a screenshot you can look at.
 
 Requires Google Chrome (found automatically). Only used for visual QA.
 """
+
 from __future__ import annotations
 
 import os
@@ -54,8 +55,13 @@ def main():
     env = dict(os.environ)
     env["PORT"] = str(PORT)
     here = os.path.dirname(os.path.abspath(__file__))
-    server = subprocess.Popen([sys.executable, "app.py"], cwd=here, env=env,
-                              stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    server = subprocess.Popen(
+        [sys.executable, "app.py"],
+        cwd=here,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.STDOUT,
+    )
     prof = tempfile.mkdtemp(prefix="chrome_")
     try:
         if not wait_server(server):
@@ -63,9 +69,21 @@ def main():
             return 1
         # 1) DOM check via --dump-dom
         dom = subprocess.run(
-            [chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
-             f"--user-data-dir={prof}", "--dump-dom", BASE + "/"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
+            [
+                chrome,
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                f"--user-data-dir={prof}",
+                "--dump-dom",
+                BASE + "/",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=90,
+        )
         html = dom.stdout
         checks = {
             "basket KPI": "Basket change" in html,
@@ -88,11 +106,23 @@ def main():
         # 2) screenshot
         shot = os.path.join(here, "dashboard.png")
         subprocess.run(
-            [chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
-             f"--user-data-dir={prof}", "--window-size=1280,1400",
-             "--virtual-time-budget=9000",
-             f"--screenshot={shot}", BASE + "/"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=90)
+            [
+                chrome,
+                "--headless=new",
+                "--disable-gpu",
+                "--no-sandbox",
+                f"--user-data-dir={prof}",
+                "--window-size=1280,1400",
+                "--virtual-time-budget=9000",
+                f"--screenshot={shot}",
+                BASE + "/",
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=90,
+        )
         print("SCREENSHOT", shot if os.path.exists(shot) else "FAILED")
         return 0
     finally:

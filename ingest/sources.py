@@ -7,12 +7,14 @@ Pluggable data sources. Each source fetches price points as a list of dicts:
 A source whose `.name` is set describes the *provenance* stored with every
 price point.
 """
+
 from __future__ import annotations
 
 import csv
 from datetime import date
 
 from model import ITEMS, price_at
+
 
 # ---------------------------------------------------------------------------
 class _BaseSource:
@@ -38,17 +40,25 @@ class SeedSource(_BaseSource):
     method = "generator"
 
     def __init__(self, start: date = None, end: date = None):
-        from model import START_DATE, END_DATE, weekly_dates
+        from model import END_DATE, START_DATE
+
         self.start = start or START_DATE
         self.end = end or END_DATE
 
     def fetch(self):
         from model import weekly_dates
+
         out = []
         for item in ITEMS:
             for day in weekly_dates(self.start, self.end):
-                out.append({"item": item[0], "date": day.isoformat(),
-                            "price": price_at(day, item), "method": self.method})
+                out.append(
+                    {
+                        "item": item[0],
+                        "date": day.isoformat(),
+                        "price": price_at(day, item),
+                        "method": self.method,
+                    }
+                )
         return out
 
 
@@ -69,12 +79,14 @@ class CSVSource(_BaseSource):
         out = []
         with open(self.path, newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
-                out.append({
-                    "item": str(row["item"]).strip(),
-                    "date": str(row["date"]).strip(),
-                    "price": float(row["price"]),
-                    "method": str(row.get("method") or "").strip() or self.method,
-                })
+                out.append(
+                    {
+                        "item": str(row["item"]).strip(),
+                        "date": str(row["date"]).strip(),
+                        "price": float(row["price"]),
+                        "method": str(row.get("method") or "").strip() or self.method,
+                    }
+                )
         return out
 
 
@@ -98,6 +110,7 @@ class PBSWebSource(_BaseSource):
         if not self.endpoint:
             raise NotImplementedError(
                 "PBSWebSource needs an endpoint + network access + the "
-                "publisher's permission. Configure endpoint to enable it.")
+                "publisher's permission. Configure endpoint to enable it."
+            )
         # TODO: requests.get(self.endpoint) -> parse -> [{item,date,price,method}]
         return []

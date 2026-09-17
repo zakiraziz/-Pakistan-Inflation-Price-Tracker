@@ -6,6 +6,7 @@ shipped to a log aggregator in production.
 
 Set LOG_LEVEL=DEBUG for verbose output; JSON_LINES=0 for human-readable text.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,8 +40,7 @@ def get_logger(name: str = "app") -> logging.Logger:
     if os.environ.get("JSON_LINES", "1") not in ("0", "false", "False"):
         handler.setFormatter(JsonFormatter())
     else:
-        handler.setFormatter(logging.Formatter(
-            "%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
 
     root = logging.getLogger()
     root.handlers = [handler]
