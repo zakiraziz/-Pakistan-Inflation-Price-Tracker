@@ -227,12 +227,31 @@ seed → tests with coverage → live web checks on every push.
 
 Because everything is a single `app.py` with a flat-file DB:
 
-- **Render / Railway** — set build command `pip install -r requirements.txt`,
-  start command `python app.py`. Note: free tiers give an ephemeral
-  filesystem — run `seed.py` as a one-off start command so `data/` (or an
-  attached persistent disk) is populated, and schedule `job.py` externally.
+- **Render (recommended, one click)** — a Blueprint is included
+  (`render.yaml`): push to GitHub, then in Render choose **New → Blueprint**
+  and accept the plan. It provisions one free web service that:
+  - builds with `pip install -r requirements.txt`,
+  - **seeds the database at boot** via `boot.py` (free tiers have an ephemeral
+    filesystem — this guarantees `/healthz` is ready on the first boot and
+    keeps existing data on any later persistent disk),
+  - serves on the injected `$PORT` with `/healthz` as the health check.
+- **Railway / any PaaS** — build `pip install -r requirements.txt`, start
+  `python boot.py && python app.py`.
 - **Any VPS / free host** — copy the folder, install requirements, run
   `python app.py` behind a reverse proxy (e.g. Caddy/nginx).
+
+**Weekly data refresh:** the bundled generator can produce future weeks, so
+`python job.py` keeps appending points. On Render, cron is a separate service
+(see the commented block in `render.yaml`); on the free tier prefer an external
+scheduler (GitHub Actions cron) — and secure the admin endpoints first.
+
+**After deploying, verify it's actually live:**
+
+```bash
+curl -s https://<your-service>.onrender.com/healthz   # {"status": "ok", ...}
+curl -s https://<your-service>.onrender.com/readyz    # {"status": "ready", ...}
+# then the full loop: dashboard -> filters -> Update data -> refresh
+```
 
 ## Known limitations
 

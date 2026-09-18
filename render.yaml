@@ -1,0 +1,38 @@
+# Render Blueprint — Pakistan Inflation / Price Tracker
+# Docs: https://render.com/docs/blueprint-spec
+# Deploy: push this file to the repo root, then "New +" -> "Blueprint" in Render.
+services:
+  - type: web
+    name: pakistan-inflation-tracker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Free tier gives an ephemeral disk: seed the approved baseline at boot
+    # (idempotent — keeps existing data when the DB is already populated),
+    # then serve. PORT is injected by Render and read by core/config.py.
+    startCommand: python boot.py && python app.py
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.6" # matches the versions CI tests (3.12 / 3.13)
+      - key: FORCE_HTTPS
+        value: "1" # TLS terminates at Render's edge -> emit HSTS
+      - key: LOG_LEVEL
+        value: INFO
+      - key: JSON_LINES
+        value: "1"
+      - key: RATE_LIMIT_STORAGE
+        value: memory:// # single free-tier worker; use Redis + a paid plan to scale out
+
+  # Optional weekly data refresh (appends the next week's points; the bundled
+  # generator can produce future dates, so this keeps the series growing).
+  # Cron is a separate service on Render — on the free tier prefer an external
+  # scheduler (e.g. GitHub Actions cron running `python job.py` against a
+  # persistent disk, or POSTing /ingest/next once admin endpoints are secured).
+  #
+  # - type: cron
+  #   name: pakistan-inflation-ingest
+  #   runtime: python
+  #   schedule: "0 6 * * 6" # Saturdays 06:00 UTC
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python job.py
