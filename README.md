@@ -92,8 +92,13 @@ GitHub Actions / Celery beat) rather than inside the web process.
 |---|---|---|
 | `PORT` | `5010` | web port |
 | `CACHE_TYPE` / `CACHE_TTL` | `SimpleCache` / `300` | cache backend + TTL |
-| `RATE_LIMIT_DEFAULT` / `RATE_LIMIT_WRITE` | `300/min` / `60/min` | rate limits |
+| `REDIS_URL` | `redis://localhost:6379/0` | used when `CACHE_TYPE=RedisCache` / Redis rate-limit storage |
+| `RATE_LIMIT_DEFAULT` / `RATE_LIMIT_WRITE` | `300/min` / `60/min` | rate limits (Flask-Limiter syntax) |
+| `RATE_LIMIT_STORAGE` | `memory://` | limiter storage (`memory://` or a Redis URL; use Redis with multiple workers) |
+| `FORCE_HTTPS` | `0` | emit HSTS when TLS terminates upstream |
 | `LOG_LEVEL` / `JSON_LINES` | `INFO` / `1` | logging |
+
+See `.env.example` for the full contract (incl. `INGEST_CRON_*`, `INGEST_INTERVAL_SECONDS`).
 
 ## Project layout
 
@@ -110,7 +115,6 @@ analyze.py        # headline stats (used by the explainer)
 app.py            # Flask API: cached, rate-limited, /healthz, admin approval
 log.py            # structured (JSON) logging
 tests/            # pytest suite (fixtures, validators, pipeline, app/caching)
-test_pipeline.py  # dependency-free end-to-end pipeline tests
 test_web.py       # boots the real server and checks every route
 shot.py           # headless-Chrome render QA (screenshot + DOM assertions)
 static/           # dashboard (Chart.js) + standalone explainer page
@@ -157,8 +161,9 @@ python -m venv .venv
 Run the checks:
 
 ```bash
-.venv/Scripts/python test_pipeline.py   # all tests should pass
-.venv/Scripts/python analyze.py         # headline numbers
+.venv/Scripts/python -m pytest            # unit + integration tests
+.venv/Scripts/python test_web.py          # live server checks (seed first)
+.venv/Scripts/python analyze.py           # headline numbers
 ```
 
 ## How the data pipeline works
@@ -210,7 +215,6 @@ A full responsive dashboard (Flask + SQLite + Chart.js, Inter font):
 ```bash
 python seed.py                       # rebuild an approved baseline
 pytest --cov --cov-fail-under=80     # unit + integration tests with coverage
-python test_pipeline.py              # dependency-free pipeline checks
 python test_web.py                   # boots the real server, hits every route
 python scheduler.py --once           # one real ingestion run
 python shot.py                       # (optional) headless-Chrome render QA
@@ -229,6 +233,24 @@ Because everything is a single `app.py` with a flat-file DB:
   attached persistent disk) is populated, and schedule `job.py` externally.
 - **Any VPS / free host** — copy the folder, install requirements, run
   `python app.py` behind a reverse proxy (e.g. Caddy/nginx).
+
+## Known limitations
+
+- **The series is a representative model, not official PBS data** — it is
+  *modelled on* Pakistan's real CPI experience (high inflation in 2023 easing
+  to disinflation by 2025–26, volatile fresh produce, high energy pass-through).
+  Swap `model.py` for a permitted public API/CSV to go live; the pipeline,
+  storage and charts don't change. Only collect data where permitted.
+- **Admin endpoints are unauthenticated** — `/api/admin/*` and `/ingest/next`
+  assume a trusted deployment (reverse proxy with auth, or a private network).
+  Add token auth before exposing them publicly.
+- **SQLite is single-writer** — fine for this workload, but move to Postgres
+  (`DATABASE_URL`, schema is compatible) for multi-worker production.
+- **Rate-limit counters are per-process with `memory://`** — run multiple web
+  workers only after switching `RATE_LIMIT_STORAGE` to Redis.
+- **Free-tier hosts have ephemeral disks** — re-seed on boot or attach a
+  persistent disk, and schedule `job.py` externally (see *Deploying*).
+- **No forecasting / STL / change-point detection yet** — see the roadmap.
 
 ## Data caveat
 
