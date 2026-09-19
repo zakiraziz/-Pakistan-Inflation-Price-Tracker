@@ -1,21 +1,12 @@
 """App-level tests: health, caching + invalidation, and the approval flow.
 
-The Flask app is a module-level singleton, so its rate limiter (``app.limiter``,
-``memory://`` storage) and response cache persist across every test in the
-process: counters accumulate per client IP and a burst of requests in earlier
-tests can push later requests over the limit (429) — a classic
-shared-fixture bug that only shows up in CI or long runs.
-
-The ``client`` fixture below resets the limiter's storage and the cache before
-each test instead of disabling rate limiting. That keeps the limiter itself
-exercised (headers, storage wiring) while guaranteeing every test starts with
-a clean budget. ``test_rate_limit_enforced`` then proves the limiter still
+The shared ``client`` fixture (tests/conftest.py) resets the app singleton's
+rate limiter and cache before each test, so a generous read budget never leaks
+between tests; ``test_rate_limit_enforced`` below still proves the limiter
 rejects with 429 when a limit really is exceeded.
 """
 
 from __future__ import annotations
-
-import pytest
 
 import app as app_mod
 
@@ -29,24 +20,6 @@ if not any(r.rule == "/api/_ratelimit-probe" for r in app_mod.app.url_map.iter_r
     @app_mod.limiter.limit("2 per minute")
     def _ratelimit_probe():  # pragma: no cover - trivial handler
         return {"ok": True}
-
-
-@pytest.fixture()
-def client(tmp_db):
-    import seed
-
-    con, path = tmp_db
-    seed.load(con)
-    import app as app_mod
-
-    app_mod.app.config["TESTING"] = True
-    # Fresh rate-limit budget + cache for every test (see module docstring).
-    app_mod.limiter.reset()
-    app_mod.cache.clear()
-    yield app_mod.app.test_client()
-    app_mod.limiter.reset()
-    app_mod.cache.clear()
-    con.close()
 
 
 def test_healthz_ok(client):

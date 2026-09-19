@@ -262,6 +262,17 @@
     });
   }
 
+  function sessionToken() {
+    try { return window.sessionStorage.getItem("adminToken") || ""; } catch (e) { return ""; }
+  }
+
+  function jsonHeaders() {
+    var h = { "Content-Type": "application/json" };
+    var t = sessionToken();
+    if (t) h["X-Admin-Token"] = t;
+    return h;
+  }
+
   function runUpdate() {
     var btn = el("updateNow");
     var badge = el("updatedBadge");
@@ -269,28 +280,54 @@
     btn.disabled = true;
     btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36L21 8"/><path d="M21 3v5h-5"/></svg> Updating\u2026';
     badge.textContent = "Updating\u2026";
-    fetch("/ingest/next", { method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ auto_approve: true }) })
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        selfUpdateAt = Date.now();   /* swallow the live echo of our own write */
-        if (data.counts && data.counts.pending) {
-          toast("Ingested " + data.inserted + " point(s); " +
-                data.counts.pending + " pending review");
-        } else {
-          toast("Updated: " + data.inserted + " new point(s)");
-        }
-        badge.textContent = "Updated " + (data.for_week || "");
-        load();
-      })
-      .catch(function (err) {
-        toast("Update failed: " + (err.message || "unknown error"));
-      })
-      .finally(function () {
-        btn.disabled = false;
-        btn.innerHTML = inner;
-      });
+    /* The write endpoint may be protected (ADMIN_TOKEN, or loopback-only on a
+       public deployment). Ask for the token once on 401, and always surface the
+       API's own error message instead of reporting a phantom success. */
+    function attempt(alreadyPrompted) {
+      fetch("/ingest/next", { method: "POST",
+        headers: jsonHeaders(),
+        body: JSON.stringify({ auto_approve: true }) })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (data) {
+            return { ok: r.ok, status: r.status, data: data };
+          });
+        })
+        .then(function (res) {
+          if (!res.ok) {
+            var apiErr = (res.data && res.data.error) || {};
+            if (res.status === 401 && !alreadyPrompted) {
+              var entered = window.prompt("Admin token (ADMIN_TOKEN) is required to update data:");
+              if (entered) {
+                try { window.sessionStorage.setItem("adminToken", entered); } catch (e) { /* ignore */ }
+                attempt(true);
+                return;
+              }
+            }
+            toast((apiErr.message || ("Update failed (HTTP " + res.status + ")")) +
+                  (apiErr.hint ? " \u2014 " + apiErr.hint : ""));
+            badge.textContent = "Update blocked";
+            return;
+          }
+          selfUpdateAt = Date.now();   /* swallow the live echo of our own write */
+          if (res.data.counts && res.data.counts.pending) {
+            toast("Ingested " + res.data.inserted + " point(s); " +
+                  res.data.counts.pending + " pending review");
+          } else {
+            toast("Updated: " + res.data.inserted + " new point(s)");
+          }
+          badge.textContent = "Updated " + (res.data.for_week || "");
+          load();
+        })
+        .catch(function (err) {
+          toast("Update failed: " + (err.message || "unknown error"));
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.innerHTML = inner;
+        });
+    }
+
+    attempt(false);
   }
 
   function toast(msg) {

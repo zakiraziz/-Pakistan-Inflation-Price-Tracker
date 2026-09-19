@@ -23,6 +23,13 @@ services:
         value: "1"
       - key: RATE_LIMIT_STORAGE
         value: memory:// # single free-tier worker; use Redis + a paid plan to scale out
+      # Admin writes are closed to the public internet by default: without this
+      # token, /api/admin/* and POST /ingest/next accept loopback callers only,
+      # so the demo's "Update data" button returns 403. Set a long random value
+      # in the Render Dashboard (sync: false prompts for it) to enable
+      # authenticated writes; leave it empty for a strictly read-only demo.
+      - key: ADMIN_TOKEN
+        sync: false # provide in the Dashboard; empty = writes stay local-only
 
   # Optional weekly data refresh (appends the next week's points; the bundled
   # generator can produce future dates, so this keeps the series growing).

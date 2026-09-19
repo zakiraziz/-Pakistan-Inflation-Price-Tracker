@@ -30,6 +30,7 @@ import db
 import log
 from alert import latest_alerts
 from core import live
+from core.auth import install as install_auth
 from core.config import settings
 from core.security import install
 
@@ -60,6 +61,7 @@ limiter = Limiter(
 write_limit = settings.rate_limit_write
 
 install(app)  # security headers + structured error handling
+install_auth(app)  # admin/write guard (ADMIN_TOKEN, loopback fallback)
 logger = log.get_logger("app")
 
 DEFAULT_START = "2025-07-01"

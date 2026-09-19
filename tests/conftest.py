@@ -34,9 +34,19 @@ def seeded_db(tmp_db):
 
 @pytest.fixture()
 def client(seeded_db):
-    """Flask test client wired to the isolated seeded database."""
+    """Flask test client wired to the isolated seeded database.
+
+    The app is a module-level singleton, so its rate limiter (``memory://``
+    storage) and response cache persist across every test in the process.
+    Resetting both here gives each test a clean budget instead of disabling
+    rate limiting — the limiter itself stays exercised.
+    """
     import app as app_mod
 
     app_mod.app.config["TESTING"] = True
+    app_mod.limiter.reset()
+    app_mod.cache.clear()
     with app_mod.app.test_client() as c:
         yield c
+    app_mod.limiter.reset()
+    app_mod.cache.clear()

@@ -4,6 +4,47 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-09-19
+
+### Added
+- **Admin/write protection** (`core/auth.py`): `/api/admin/*` and
+  `POST /ingest/next` are closed by default — with `ADMIN_TOKEN` unset only
+  strict-loopback callers (local dev, test client) may write and everyone else
+  gets `403`; when set, the token is required on every call
+  (`X-Admin-Token` or `Authorization: Bearer`), compared with
+  `hmac.compare_digest`. `ADMIN_ALLOW_LOCAL=0` closes loopback too.
+- **Deployment**: `render.yaml` Blueprint (web service, `/healthz` health
+  check, `PYTHON_VERSION`, `FORCE_HTTPS`, `sync: false` admin token) validated
+  against Render's published JSON schema, plus `boot.py` — an idempotent
+  boot-time seeder for ephemeral free-tier filesystems (seeds an empty DB,
+  keeps existing data otherwise).
+- Rate-limit response headers (`X-RateLimit-*`) so clients can see their budget.
+- Tests: `tests/test_auth.py` (6 cases covering both postures) and
+  `test_rate_limit_enforced`, a negative control that proves the limiter still
+  returns the structured 429 envelope.
+- README: environment-variable reference table, **Known limitations**, and
+  post-deploy smoke-test instructions.
+
+### Changed
+- Test isolation: the shared `client` fixture now resets the app singleton's
+  rate limiter and response cache per test instead of relying on a clean
+  process — the limiter itself stays exercised.
+- Dashboard "Update data" now sends the admin token when configured, prompts
+  once on `401`, and surfaces the API's error message instead of reporting a
+  phantom success on `403`/`429`/`500`.
+
+### Fixed
+- CI quality gates that were failing on `main`: removed the syntactically
+  invalid `verify_all.py`, fixed 9 ruff findings and 10 mypy errors
+  (implicit-`Optional` defaults), and omitted developer scripts from the
+  coverage source so the 80% gate reflects the shipped app (39 tests, ~90%).
+- Documentation drift: dropped references to `test_pipeline.py`, which is not
+  in the repository.
+- **Note:** the Docker packaging described under 0.4.0 (`Dockerfile`,
+  `docker-compose.yml`, `docker/Caddyfile`) is *not* present in this
+  repository, so the README no longer implies it is. Adding it for real is
+  tracked as follow-up work.
+
 ## [0.4.0] - 2026-09-13
 
 ### Added

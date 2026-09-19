@@ -96,6 +96,8 @@ GitHub Actions / Celery beat) rather than inside the web process.
 | `RATE_LIMIT_DEFAULT` / `RATE_LIMIT_WRITE` | `300/min` / `60/min` | rate limits (Flask-Limiter syntax) |
 | `RATE_LIMIT_STORAGE` | `memory://` | limiter storage (`memory://` or a Redis URL; use Redis with multiple workers) |
 | `FORCE_HTTPS` | `0` | emit HSTS when TLS terminates upstream |
+| `ADMIN_TOKEN` | *(unset)* | when set, `/api/admin/*` + `POST /ingest/next` require it (`X-Admin-Token` or `Bearer`); when unset those routes accept **loopback callers only** |
+| `ADMIN_ALLOW_LOCAL` | `1` | set `0` to close admin routes even on localhost (e.g. nginx on the same host) |
 | `LOG_LEVEL` / `JSON_LINES` | `INFO` / `1` | logging |
 
 See `.env.example` for the full contract (incl. `INGEST_CRON_*`, `INGEST_INTERVAL_SECONDS`).
@@ -192,7 +194,18 @@ Run the checks:
 | `GET /api/pivot?start=&end=&items=` | item × date matrix + basket index (Trends/Compare/Data) |
 | `GET /api/series.csv?...` | download the current view as CSV |
 | `GET /api/alerts?threshold=5&start=&end=` | price-jump alerts within the window |
-| `POST /ingest/next` | run the ingest job on demand (see the "Update data" button) |
+| 🔒 `POST /ingest/next` | run the ingest job on demand (see the "Update data" button) |
+
+🔒 = admin/write route. Protected by `core/auth.py`: requires `ADMIN_TOKEN`
+(via `X-Admin-Token: <token>` or `Authorization: Bearer <token>`) when a token
+is configured, and accepts **loopback callers only** when it is not.
+
+```bash
+# authenticated ingest (ADMIN_TOKEN set on the server)
+curl -X POST https://<your-service>.onrender.com/ingest/next \
+     -H "X-Admin-Token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+     -d '{"auto_approve": true}'
+```
 
 ## Dashboard
 
@@ -243,7 +256,13 @@ Because everything is a single `app.py` with a flat-file DB:
 **Weekly data refresh:** the bundled generator can produce future weeks, so
 `python job.py` keeps appending points. On Render, cron is a separate service
 (see the commented block in `render.yaml`); on the free tier prefer an external
-scheduler (GitHub Actions cron) — and secure the admin endpoints first.
+scheduler (GitHub Actions cron) — and set `ADMIN_TOKEN` first, since the admin
+routes are closed to the public internet by default.
+
+**Docker:** not included in this repository yet (the `Makefile`'s
+`docker-up`/`docker-down` targets assume a `docker-compose.yml` you provide).
+Render deploys directly from `requirements.txt` via the Python runtime, so no
+container is needed for the hosted setup.
 
 **After deploying, verify it's actually live:**
 
@@ -260,9 +279,14 @@ curl -s https://<your-service>.onrender.com/readyz    # {"status": "ready", ...}
   to disinflation by 2025–26, volatile fresh produce, high energy pass-through).
   Swap `model.py` for a permitted public API/CSV to go live; the pipeline,
   storage and charts don't change. Only collect data where permitted.
-- **Admin endpoints are unauthenticated** — `/api/admin/*` and `/ingest/next`
-  assume a trusted deployment (reverse proxy with auth, or a private network).
-  Add token auth before exposing them publicly.
+- **Admin endpoints are protected by default** — `/api/admin/*` and
+  `POST /ingest/next` change the dataset, so they are closed to the public
+  internet: without `ADMIN_TOKEN` only strict-loopback callers (local dev, the
+  test client) may write, and everyone else gets `403`. Set `ADMIN_TOKEN` to a
+  long random secret to allow authenticated writes from a deployed dashboard
+  (`X-Admin-Token: <secret>` or `Authorization: Bearer <secret>`); the
+  dashboard prompts for it on the first `401` and remembers it for the tab.
+  See `core/auth.py` and `tests/test_auth.py`.
 - **SQLite is single-writer** — fine for this workload, but move to Postgres
   (`DATABASE_URL`, schema is compatible) for multi-worker production.
 - **Rate-limit counters are per-process with `memory://`** — run multiple web
