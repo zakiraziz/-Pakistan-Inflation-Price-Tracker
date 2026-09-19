@@ -233,6 +233,12 @@ python scheduler.py --once           # one real ingestion run
 python shot.py                       # (optional) headless-Chrome render QA
 ```
 
+After a deploy (or against any running instance):
+
+```bash
+python smoke_prod.py https://<your-service>.onrender.com   # real-host smoke test
+```
+
 CI (`.github/workflows/ci.yml`) runs lint → format check → type check →
 seed → tests with coverage → live web checks on every push.
 
@@ -264,13 +270,22 @@ routes are closed to the public internet by default.
 Render deploys directly from `requirements.txt` via the Python runtime, so no
 container is needed for the hosted setup.
 
-**After deploying, verify it's actually live:**
+**After deploying, verify it's actually live** — one command checks the whole
+production contract (health, readiness, public reads, admin protection, security
+headers, SSE, rate-limit headers):
 
 ```bash
-curl -s https://<your-service>.onrender.com/healthz   # {"status": "ok", ...}
-curl -s https://<your-service>.onrender.com/readyz    # {"status": "ready", ...}
-# then the full loop: dashboard -> filters -> Update data -> refresh
+python smoke_prod.py https://<your-service>.onrender.com
+# with the admin token, to also verify authenticated writes:
+ADMIN_TOKEN=<your token> python smoke_prod.py https://<your-service>.onrender.com
+# read-only variant (skips the one mutating check):
+python smoke_prod.py https://<your-service>.onrender.com --no-write
+# exits 0 with "DEPLOYMENT VERIFIED", or 1 listing every failure
 ```
+
+Then click **Update data** on the dashboard: with `ADMIN_TOKEN` set it prompts
+once for the token and ingests the next week; without one it correctly reports
+that writes are blocked (rather than a phantom success).
 
 ## Known limitations
 

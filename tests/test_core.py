@@ -33,21 +33,25 @@ def test_readyz_reports_ready_when_data_exists(client):
     assert body["approved_points"] > 0
 
 
-def test_config_reads_env_overrides(monkeypatch):
+def test_config_reads_env_overrides(clean_config_env):
     from core.config import Config
 
-    monkeypatch.setenv("PORT", "9001")
-    monkeypatch.setenv("CACHE_TYPE", "RedisCache")
+    clean_config_env.setenv("PORT", "9001")
+    clean_config_env.setenv("CACHE_TYPE", "RedisCache")
     cfg = Config.from_env()
     assert cfg.port == 9001
     assert cfg.cache_type == "RedisCache"
 
 
-def test_config_env_file_beats_defaults(tmp_path, monkeypatch):
+def test_config_env_file_beats_defaults(tmp_path, clean_config_env):
     from core import config as config_mod
 
     env_file = tmp_path / ".env"
     env_file.write_text("PORT=9002\n# comment\nBAD_LINE\n", encoding="utf-8")
-    monkeypatch.setattr(config_mod, "BASE_DIR", tmp_path)
+    clean_config_env.setattr(config_mod, "BASE_DIR", tmp_path)
     cfg = config_mod.Config.from_env()
     assert cfg.port == 9002
+
+    # Documented precedence: a real environment variable wins over the .env file.
+    clean_config_env.setenv("PORT", "9003")
+    assert config_mod.Config.from_env().port == 9003

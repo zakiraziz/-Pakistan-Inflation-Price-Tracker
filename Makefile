@@ -14,7 +14,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup seed dev once test test-cov web-test lint format type qa docker-up docker-down clean
+.PHONY: help setup seed dev once test test-cov web-test smoke-prod lint format type qa docker-up docker-down clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[33m%-10s\033[0m %s\n", $$1, $$2}'
@@ -39,6 +39,9 @@ test-cov: ## Run pytest with coverage (fails under 80%)
 
 web-test: ## Boot the real server and check every route
 	$(PY) test_web.py
+
+smoke-prod: ## Smoke-test a deployed URL: make smoke-prod URL=https://app.example.com
+	$(PY) smoke_prod.py $(URL)
 
 pipeline-test: ## Dependency-free pipeline checks
 	$(PY) test_pipeline.py

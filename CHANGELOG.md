@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   boot-time seeder for ephemeral free-tier filesystems (seeds an empty DB,
   keeps existing data otherwise).
 - Rate-limit response headers (`X-RateLimit-*`) so clients can see their budget.
+- `smoke_prod.py` — real-host post-deploy verification (health, readiness,
+  public reads, admin protection, security headers, SSE, rate-limit headers);
+  exits non-zero and lists failures, supports `--token`/`$ADMIN_TOKEN`,
+  `--no-write` and `--wait` for cold instances. Exposed as
+  `make smoke-prod URL=...`.
 - Tests: `tests/test_auth.py` (6 cases covering both postures) and
   `test_rate_limit_enforced`, a negative control that proves the limiter still
   returns the structured 429 envelope.
@@ -40,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   coverage source so the 80% gate reflects the shipped app (39 tests, ~90%).
 - Documentation drift: dropped references to `test_pipeline.py`, which is not
   in the repository.
+- Test isolation (config): the config tests no longer depend on the ambient
+  shell — an exported `PORT` used to break
+  `test_config_env_file_beats_defaults` locally while passing in CI. A
+  `clean_config_env` fixture strips every key `Config` reads, and the test now
+  also asserts the documented precedence (real env var > `.env` > default).
 - **Note:** the Docker packaging described under 0.4.0 (`Dockerfile`,
   `docker-compose.yml`, `docker/Caddyfile`) is *not* present in this
   repository, so the README no longer implies it is. Adding it for real is

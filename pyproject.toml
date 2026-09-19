@@ -8,7 +8,7 @@ source = ["."]
 omit = [
     # CLI entrypoints & dev/verification scripts (integration- or manually-tested)
     "tests/*", "shot.py", "scheduler.py", "test_pipeline.py", "test_web.py",
-    "seed.py", "job.py", "analyze.py",
+    "seed.py", "job.py", "analyze.py", "boot.py", "smoke_prod.py",
     "diagnose.py", "inventory.py", "compute_coverage.py", "gen.py",
     "run_smoke.py", "run_verify.py", "verify.py", "write_verify.py",
 ]   # CLI entrypoints are integration-tested
