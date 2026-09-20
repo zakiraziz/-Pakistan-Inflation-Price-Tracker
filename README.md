@@ -1,5 +1,11 @@
 # Pakistan Inflation / Price Tracker (Z5)
 
+[![CI](https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+![Dashboard](dashboard.png)
+
 A small full-stack service that **ingests price data, stores a time-series,
 charts trends over time with date filters, alerts on price jumps, and explains
 what the data shows about inflation** — for a representative basket of
@@ -222,6 +228,11 @@ A full responsive dashboard (Flask + SQLite + Chart.js, Inter font):
 - **Basket filters** — category chips, item checklist, and a live **search box**.
 - **Alerts panel** — items that jumped ≥ the threshold week-on-week, largest jump highlighted.
 - Loading spinners, friendly empty states, toasts, custom scrollbars, mobile layout.
+
+> Tip: append `?nolive=1` to the URL for a static render without the live
+> stream — used by `shot.py` for screenshots (a permanently-open SSE connection
+> prevents a headless browser from ever reaching "network idle") and handy when
+> embedding a still dashboard.
 
 ## Checking it works
 

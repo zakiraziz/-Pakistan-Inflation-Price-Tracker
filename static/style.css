@@ -111,6 +111,7 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
   border-color: rgba(194,65,12,.3); color: var(--up); }
 .live[data-state="offline"] .live-dot { background: var(--up); }
 .live[data-state="paused"] { opacity: .65; }
+.live[data-state="static"] { opacity: .65; }
 @keyframes live-pulse {
   0%   { box-shadow: 0 0 0 0 rgba(4,106,56,.45); }
   70%  { box-shadow: 0 0 0 6px rgba(4,106,56,0); }

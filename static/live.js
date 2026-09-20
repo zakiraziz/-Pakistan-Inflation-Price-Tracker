@@ -18,11 +18,16 @@
   "use strict";
 
   var LIVE = "live", CONNECTING = "connecting", RETRYING = "retrying";
-  var OFFLINE = "offline", PAUSED = "paused";
+  var OFFLINE = "offline", PAUSED = "paused", STATIC = "static";
   var LABELS = {
     live: "Live", connecting: "Connecting\u2026", retrying: "Reconnecting\u2026",
-    offline: "Offline", paused: "Paused"
+    offline: "Offline", paused: "Paused", static: "Live off"
   };
+  /* Static mode (?nolive=1): render the view without opening a stream. Used by
+     shot.py for screenshots (a permanently-open SSE connection means a headless
+     browser never reaches "network idle", so --screenshot hangs) and available
+     to anyone embedding a still dashboard. */
+  var NO_LIVE = /[?&]nolive=1(&|$)/.test(global.location.search);
   var MAX_BACKOFF = 30000;   /* cap (ms) on the reconnect backoff */
   var STALE_AFTER = 35000;   /* silence (ms) after which a stream is suspect */
   var STALE_LIMIT = 3;       /* consecutive stale checks before polling */
@@ -57,7 +62,8 @@
     if (text) text.textContent = LABELS[state] || state;
     var age = el("liveAge");
     if (age) {
-      age.textContent = paused ? "paused while hidden"
+      age.textContent = state === STATIC ? "live updates off"
+        : paused ? "paused while hidden"
         : lastChangeAt ? "updated " + ago(Date.now() - lastChangeAt) : "syncing\u2026";
     }
   }
@@ -188,6 +194,7 @@
     started = true;
     lastFrameAt = Date.now();
     lastChangeAt = Date.now();
+    if (NO_LIVE) { mode = "off"; setState(STATIC); return; }  /* no timers, no stream */
     paint();
     tickTimer = setInterval(function () { paint(); watchdogTick(); }, TICK_MS);
     document.addEventListener("visibilitychange", function () {

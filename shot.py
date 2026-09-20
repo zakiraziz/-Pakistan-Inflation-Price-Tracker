@@ -94,36 +94,53 @@ def main():
             "trend canvas": "trendCanvas" in html,
             "item lines built": "Wheat flour (atta)" in html,
             "chart drew (aria-label)": "aria-label" in html,
-            "alert chips": "alert-chip" in html,
+            # Both states are valid: alert chips when jumps exist, the "No
+            # alerts" empty state otherwise (alerts are computed by the ingest
+            # job, so a freshly seeded DB legitimately has none).
+            "alerts panel rendered": ("alert-chip" in html) or ("No alerts" in html),
             "category chips": "category-chip" in html,
             "search box present": 'id="search"' in html,
+            "live pill present": 'id="livePill"' in html,
             "no error state": "Something went wrong" not in html,
             "no leftover skeletons": "skeleton" not in html,
         }
         for k, ok in checks.items():
             print(("OK " if ok else "MISSING ") + k)
 
-        # 2) screenshot
+        # 2) screenshot. Static mode (``?nolive=1``) is required: the dashboard
+        #    otherwise holds an open SSE connection and a headless browser never
+        #    reaches "network idle", so --screenshot would hang until timeout.
         shot = os.path.join(here, "dashboard.png")
-        subprocess.run(
-            [
-                chrome,
-                "--headless=new",
-                "--disable-gpu",
-                "--no-sandbox",
-                f"--user-data-dir={prof}",
-                "--window-size=1280,1400",
-                "--virtual-time-budget=9000",
-                f"--screenshot={shot}",
-                BASE + "/",
-            ],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=90,
-        )
-        print("SCREENSHOT", shot if os.path.exists(shot) else "FAILED")
+        try:
+            subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    f"--user-data-dir={prof}",
+                    "--window-size=1280,1400",
+                    "--virtual-time-budget=9000",
+                    f"--screenshot={shot}",
+                    BASE + "/?nolive=1",
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=90,
+            )
+        except subprocess.TimeoutExpired:
+            print(
+                "SCREENSHOT_TIMEOUT (Chrome never settled; try a smaller "
+                "--virtual-time-budget or check that ?nolive=1 is supported)"
+            )
+            return 1
+        if os.path.exists(shot):
+            print(f"SCREENSHOT {shot} ({os.path.getsize(shot)} bytes)")
+        else:
+            print("SCREENSHOT FAILED (no file written)")
+            return 1
         return 0
     finally:
         server.terminate()
