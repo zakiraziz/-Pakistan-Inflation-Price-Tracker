@@ -146,12 +146,59 @@
     </div>
   </section>
 
-  <footer>
-    <p>
-      <a href="/methodology">How the index is calculated</a> ·
-      <a href="/static/explainer.html" target="_blank" rel="noopener">Economics explainer</a> ·
-      Representative educational sample · Flask, SQLite, Chart.js
-    </p>
+  <footer class="site-foot">
+    <div class="foot-grid">
+      <section class="foot-about">
+        <div class="foot-brand">
+          <div class="logo foot-logo" aria-hidden="true">₨</div>
+          <div>
+            <h2>Pakistan Inflation Tracker</h2>
+            <p>Weekly prices for an everyday-goods basket — charted, explained, fully provenanced.</p>
+          </div>
+        </div>
+        <p class="foot-note">Every price point carries <strong>source, method and approval
+        status</strong>. Implausible jumps are held <em>pending</em> and never enter the public
+        index until a human approves them — so one bad scrape can't poison the series.</p>
+      </section>
+
+      <section class="foot-col">
+        <h3>Dataset</h3>
+        <dl class="foot-stats">
+          <div><dt>Items tracked</dt><dd id="footItems">—</dd></div>
+          <div><dt>Approved points</dt><dd id="footApproved">—</dd></div>
+          <div><dt>Latest week</dt><dd id="footLatest">—</dd></div>
+          <div><dt>Held for review</dt><dd id="footPending">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="foot-col">
+        <h3>Explore</h3>
+        <ul>
+          <li><a href="/methodology">How the index is calculated</a></li>
+          <li><a href="/static/explainer.html" target="_blank" rel="noopener">Economics explainer</a></li>
+          <li><a href="/api/items">API — tracked items</a></li>
+          <li><a href="/api/series.csv">Download the series (CSV)</a></li>
+          <li><a href="https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker" target="_blank" rel="noopener">Source &amp; docs on GitHub</a></li>
+        </ul>
+      </section>
+
+      <section class="foot-col">
+        <h3>Under the hood</h3>
+        <ul>
+          <li>Flask + SQLite — zero external servers</li>
+          <li>Chart.js dashboard with <span id="footLive">live SSE updates</span></li>
+          <li>Validated ingestion pipeline &amp; audit log</li>
+          <li>Cached, rate-limited, health-checked API</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="foot-bottom">
+      <p>© 2026 Pakistan Inflation Tracker · MIT licence · Representative educational sample —
+      <strong>not</strong> the official PBS series.</p>
+      <p><a href="/healthz">healthz</a> · <a href="/readyz">readyz</a> ·
+      <a href="/api/live">live</a> · <a href="/methodology">methodology</a></p>
+    </div>
   </footer>
 </div>
 

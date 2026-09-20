@@ -119,7 +119,7 @@ def main():
                     "--disable-gpu",
                     "--no-sandbox",
                     f"--user-data-dir={prof}",
-                    "--window-size=1280,1400",
+                    "--window-size=1280,1900",
                     "--virtual-time-budget=9000",
                     f"--screenshot={shot}",
                     BASE + "/?nolive=1",

@@ -339,9 +339,28 @@
     toast._t = setTimeout(function () { t.classList.remove("show"); }, 3200);
   }
 
+  /* Footer dataset stats: filled at boot, kept fresh by the live channel.
+     Purely informative - a failed fetch must never disturb the dashboard. */
+  function paintFootStats(data) {
+    if (!data) return;
+    var set = function (id, val) {
+      var node = el(id);
+      if (node && val != null) node.textContent = val;
+    };
+    set("footItems", data.items);
+    set("footApproved", data.approved_points);
+    set("footLatest", data.latest_date || "\u2014");
+    set("footPending", data.pending_points);
+  }
+
+  function loadFootStats() {
+    getJSON("/api/live").then(paintFootStats, function () { /* stay silent */ });
+  }
+
   /* Push path: /api/stream reports a new data revision the moment the ingest
      job (or an admin approval) commits, so the view refreshes itself. */
   function onLive(data) {
+    paintFootStats(data);
     if (Date.now() - selfUpdateAt < 5000) return;   /* our own write, already shown */
     if (data && data.items !== items.length) {
       toast("Basket changed \u2014 reloading");
@@ -355,8 +374,20 @@
   function init() {
     wire();
     loadItems();
+    loadFootStats();
     /* Real-time transport: Server-Sent Events, with polling fallback. */
-    if (window.Live) Live.start({ onRefresh: onLive });
+    if (window.Live) {
+      Live.start({ onRefresh: onLive });
+      setTimeout(function () {
+        var node = el("footLive");
+        if (!node) return;
+        if (Live.mode() === "off") node.textContent = "static render (live updates off)";
+        else if (Live.mode() === "poll") node.textContent = "polling fallback";
+      }, 1500);
+    } else {
+      var node = el("footLive");
+      if (node) node.textContent = "polling fallback";
+    }
   }
 
   if (document.readyState === "loading") {

@@ -341,8 +341,30 @@ td.chg.down { color: var(--down); }
 .state .title { color: var(--ink); font-weight: var(--fw-600); }
 
 /* ---------- footer, toast, error page ---------- */
-footer { color: var(--faint); font-size: var(--fs-sm);
-  text-align: center; margin-top: var(--s7); }
+footer { margin-top: var(--s7); color: var(--muted); font-size: var(--fs-sm); }
+.foot-grid { display: grid; grid-template-columns: 1.5fr .95fr 1fr 1.1fr; gap: var(--s6);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--s6); box-shadow: var(--shadow); }
+.foot-brand { display: flex; gap: var(--s3); align-items: flex-start;
+  margin-bottom: var(--s4); }
+.foot-logo { width: 36px; height: 36px; font-size: var(--fs-lg); flex: none; }
+.foot-about h2 { font-size: var(--fs-lg); }
+.foot-about > div > p { color: var(--muted); margin-top: 2px; }
+.foot-note { color: var(--faint); line-height: 1.65; }
+.foot-note strong { color: var(--muted); }
+.foot-col h3 { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--faint); margin: 0 0 var(--s3); }
+.foot-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+.foot-stats { margin: 0; display: grid; gap: var(--s2); align-content: start; }
+.foot-stats > div { display: flex; justify-content: space-between; gap: var(--s3);
+  border-bottom: 1px dashed var(--border); padding-bottom: var(--s1); }
+.foot-stats dt { color: var(--faint); }
+.foot-stats dd { margin: 0; font-weight: var(--fw-600); color: var(--ink);
+  font-variant-numeric: tabular-nums; }
+.foot-bottom { display: flex; justify-content: space-between; align-items: baseline;
+  gap: var(--s4); flex-wrap: wrap; margin-top: var(--s4); padding: 0 var(--s1);
+  color: var(--faint); }
+.foot-bottom p { margin: 0; }
 .toast { position: fixed; bottom: var(--s5); right: var(--s5);
   background: var(--ink); color: var(--bg); border-radius: var(--r-md);
   padding: var(--s3) var(--s4); font-weight: var(--fw-500);
@@ -365,6 +387,8 @@ footer { color: var(--faint); font-size: var(--fs-sm);
 }
 @media (max-width: 720px) {
   .page { padding: var(--s4) var(--s3) var(--s6); }
+  .foot-grid { grid-template-columns: 1fr; gap: var(--s5); padding: var(--s5); }
+  .foot-bottom { flex-direction: column; align-items: flex-start; gap: var(--s2); }
   .kpis { grid-template-columns: 1fr 1fr; }
   .card-line { flex-direction: column; align-items: stretch; gap: var(--s4); }
   .group.grow { min-width: 0; }
