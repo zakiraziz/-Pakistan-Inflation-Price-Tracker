@@ -101,6 +101,7 @@ def main():
             "category chips": "category-chip" in html,
             "search box present": 'id="search"' in html,
             "live pill present": 'id="livePill"' in html,
+            "footer rendered": "foot-grid" in html,
             "no error state": "Something went wrong" not in html,
             "no leftover skeletons": "skeleton" not in html,
         }
