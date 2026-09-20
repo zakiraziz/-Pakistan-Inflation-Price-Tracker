@@ -27,6 +27,10 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import model
+
+N_ITEMS = len(model.ITEMS)
+
 BASE_DIR = Path(__file__).resolve().parent
 BASE_URL = "http://127.0.0.1:5010"
 
@@ -136,7 +140,7 @@ j, e = get_json("/healthz")
 ok("GET /healthz 200", j is not None, e)
 if j:
     ok("healthz.status == ok", j.get("status") == "ok", str(j.get("status")))
-    ok("healthz.items == 11", j.get("items") == 11, str(j.get("items")))
+    ok("healthz.items == basket size", j.get("items") == N_ITEMS, str(j.get("items")))
     ok("healthz.approved_points > 0", j.get("approved_points", 0) > 0)
     ok("healthz.latest_date present", bool(j.get("latest_date")))
     ok("healthz.pending_points >= 0", j.get("pending_points", 0) >= 0)
@@ -167,9 +171,9 @@ j, e = get_json("/api/items")
 ok("GET /api/items 200", j is not None, e)
 if j:
     ok("api/items is list", isinstance(j, list))
-    ok("api/items count == 11", len(j) == 11, str(len(j)))
+    ok("api/items count == basket size", len(j) == N_ITEMS, str(len(j)))
     ids = sorted(i.get("id") for i in j)
-    ok("api/items ids == 1..11", ids == list(range(1, 12)), str(ids))
+    ok("api/items ids == 1..N", ids == list(range(1, N_ITEMS + 1)), str(ids))
     ok(
         "api/items fields name/category/unit",
         all({"name", "category", "unit"} <= set(i) for i in j),
@@ -221,7 +225,7 @@ if j:
         "biggest_faller",
     ]:
         ok("metrics has " + field, field in j)
-    ok("metrics.count == 11", j.get("count") == 11, str(j.get("count")))
+    ok("metrics.count == basket size", j.get("count") == N_ITEMS, str(j.get("count")))
     ok("metrics.weeks >= 2", j.get("weeks", 0) >= 2, str(j.get("weeks")))
     ok("metrics.basket_pct != 0", j.get("basket_pct", 0) != 0)
     ok("metrics.end_total > start_total", j.get("end_total", 0) > j.get("start_total", 0))
@@ -237,7 +241,11 @@ j, e = get_json("/api/pivot" + q(start=START))
 ok("GET /api/pivot?start=2023-01-01 200", j is not None, e)
 if j:
     ok("pivot.dates non-empty", len(j.get("dates", [])) > 0)
-    ok("pivot.items == 11", len(j.get("items", [])) == 11, str(len(j.get("items", []))))
+    ok(
+        "pivot.items == basket size",
+        len(j.get("items", [])) == N_ITEMS,
+        str(len(j.get("items", []))),
+    )
     ok("pivot.index starts at 100", j.get("index", [None])[0] == 100.0)
     if j.get("items"):
         it = j["items"][0]
@@ -455,7 +463,7 @@ if j:
         APPROVED_BEFORE is None or j.get("approved_points", 0) >= APPROVED_BEFORE,
         f"before={APPROVED_BEFORE} after={j.get('approved_points')}",
     )
-    ok("healthz.items still 11", j.get("items") == 11, str(j.get("items")))
+    ok("healthz.items still basket size", j.get("items") == N_ITEMS, str(j.get("items")))
 
 # =========================================================================
 #  TEARDOWN + REPORT

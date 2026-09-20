@@ -7,26 +7,43 @@ database (run `python analyze.py` to reproduce them).
 ## The headline
 
 Over the whole window (January 2023 → late 2026), the **equal-weight basket of
-11 everyday goods rose about +114% in PKR**, an average of roughly **24% per
-year**. That is fast inflation — a shopper who needed `Rs 6,477` to fill the
-basket in January 2023 would need about `Rs 13,860` in 2026 to buy the same
+28 everyday goods rose about +121% in PKR**, an average of roughly **25% per
+year**. That is fast inflation — a shopper who needed `Rs 16,013` to fill the
+basket in January 2023 would need about `Rs 35,324` in 2026 to buy the same
 things. Prices broadly **doubled** in three and a half years.
 
 The steepest cumulative rises were in:
 
 | Item | Start → Latest | Cumulative |
 |---|---|---|
+| Tea (packed) | `Rs 1,950` → `Rs 5,209` / kg | **+167%** |
 | Electricity | `Rs 35` → `Rs 87` / kWh | **+151%** |
-| Petrol (super) | `Rs 271` → `Rs 637` / L | **+135%** |
+| Petrol (super) | `Rs 271` → `Rs 637` / litre | **+135%** |
+| Beef | `Rs 862` → `Rs 2,005` / kg | **+133%** |
+| Diesel (high speed) | `Rs 296` → `Rs 676` / litre | **+128%** |
+| Vegetable ghee | `Rs 612` → `Rs 1,388` / kg | **+127%** |
+| Yogurt (curd) | `Rs 203` → `Rs 459` / kg | **+126%** |
+| Gram lentil (chana daal) | `Rs 271` → `Rs 608` / kg | **+124%** |
+| Wheat flour (atta) | `Rs 1,950` → `Rs 4,361` / 20 kg bag | **+124%** |
 | Sugar | `Rs 157` → `Rs 352` / kg | **+124%** |
-| Wheat flour (atta) | `Rs 1,950` → `Rs 4,361` / 20 kg | **+124%** |
+| Gram flour (besan) | `Rs 280` → `Rs 622` / kg | **+122%** |
+| Mutton | `Rs 2,390` → `Rs 5,240` / kg | **+119%** |
 | Eggs | `Rs 343` → `Rs 742` / dozen | **+117%** |
+| LPG | `Rs 263` → `Rs 564` / kg | **+115%** |
+| Masoor lentil | `Rs 292` → `Rs 627` / kg | **+114%** |
+| Mash lentil | `Rs 443` → `Rs 949` / kg | **+114%** |
 | Cooking oil | `Rs 2,487` → `Rs 5,226` / 5 L | **+110%** |
+| Ginger | `Rs 402` → `Rs 844` / kg | **+110%** |
 | Basmati rice | `Rs 216` → `Rs 453` / kg | **+110%** |
-| Fresh milk | `Rs 228` → `Rs 475` / L | **+108%** |
+| Fresh milk | `Rs 228` → `Rs 475` / litre | **+108%** |
+| Rice (Irri-6) | `Rs 170` → `Rs 353` / kg | **+108%** |
 | Chicken | `Rs 598` → `Rs 1,177` / kg | **+97%** |
 | Onion | `Rs 125` → `Rs 242` / kg | **+94%** |
+| Apple | `Rs 270` → `Rs 515` / kg | **+91%** |
+| Banana | `Rs 163` → `Rs 309` / dozen | **+89%** |
+| Garlic | `Rs 526` → `Rs 937` / kg | **+78%** |
 | Potato | `Rs 67` → `Rs 107` / kg | **+59%** |
+| Tomato | `Rs 141` → `Rs 156` / kg | **+11%** |
 
 ## Why inflation is high at the start and cools later — the arc
 

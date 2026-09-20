@@ -7,6 +7,8 @@ import os
 
 import pytest
 
+import model
+
 
 @pytest.fixture()
 def client(tmp_db, monkeypatch):
@@ -97,5 +99,5 @@ def test_pbs_source_requires_configuration():
 def test_healthz_reports_pending_queue(client):
     client.post("/ingest/next", json={"date": "2026-12-01", "auto_approve": False})
     body = client.get("/healthz").get_json()
-    assert body["pending_points"] == 11
+    assert body["pending_points"] == len(model.ITEMS)
     assert body["status"] == "ok"

@@ -18,6 +18,10 @@ import sys
 import time
 import urllib.request
 
+import model
+
+N_ITEMS = len(model.ITEMS)
+
 PORT = 5123
 BASE = f"http://127.0.0.1:{PORT}"
 
@@ -120,7 +124,7 @@ def main():
             # JSON validity + basic shape of a few endpoints
             _, items = http_get("/api/items")
             data = json.loads(items)
-            assert len(data) == 11, len(data)
+            assert len(data) == N_ITEMS, len(data)
             print(f"OK /api/items -> {len(data)} items")
 
             _, series = http_get("/api/series?start=2026-01-01")
@@ -135,12 +139,12 @@ def main():
 
             _, met = http_get("/api/metrics?start=2023-01-01")
             m = json.loads(met)
-            assert m["count"] == 11 and m["biggest_riser"]["pct"] > 0
+            assert m["count"] == N_ITEMS and m["biggest_riser"]["pct"] > 0
             print(f"OK /api/metrics -> count={m['count']} riser={m['biggest_riser']}")
 
             _, piv = http_get("/api/pivot?start=2023-01-01")
             p = json.loads(piv)
-            assert p["dates"] and len(p["items"]) == 11
+            assert p["dates"] and len(p["items"]) == N_ITEMS
             assert len(p["items"][0]["prices"]) == len(p["dates"])
             assert p["index"][0] == 100.0
             print(

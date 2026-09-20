@@ -34,6 +34,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   bottom bar for licence, disclaimer and status endpoints. The stats are filled
   from `/api/live` at boot and kept fresh by the SSE channel; a failed fetch
   never disturbs the dashboard. Responsive down to mobile.
+- **Basket widened from 11 to 28 everyday goods**: tomato, garlic, ginger,
+  banana, apple, Irri-6 rice, vegetable ghee, chana/mash/masoor lentils, gram
+  flour (besan), packed tea, yogurt, beef, mutton, high-speed diesel and LPG —
+  with realistic Jan-2023 PKR anchors and category-appropriate volatility.
+  Seed now produces 5,124 approved price points over 183 weeks. Every count in
+  tests and verification scripts is derived from `model.ITEMS`, so the basket
+  can grow again without breaking anything; the methodology page's basket
+  table and the economics explainer's headline/table were regenerated from
+  the live data (basket +120.6%, ≈25.4% p.a.; biggest riser: packed tea).
 - `shot.py` now captures at 1280×1900 so the redesigned footer is included in
   the README hero screenshot.
 - README: CI status badge and a current hero screenshot (the dashboard.png

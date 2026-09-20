@@ -178,7 +178,7 @@ Run the checks:
 ## How the data pipeline works
 
 1. **Ingest** — `seed.py` reads the deterministic generator in `model.py`
-   (11 items, weekly prices Jan 2023 → mid/late 2026) and writes
+   (28 items, weekly prices Jan 2023 → mid/late 2026) and writes
    `data/inflation.db`. Deterministic means re-seeding reproduces the same data.
 2. **Store** — tables `items`, `prices` (item_id, date, price) and `alerts`.
 3. **Job** — `job.py` appends the *next* weekly observation for every item and

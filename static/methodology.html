@@ -28,7 +28,7 @@
   <section class="kpis" aria-label="Method at a glance">
     <div class="kpi">
       <span class="kpi-label">Basket size</span>
-      <span class="kpi-value">11 items</span>
+      <span class="kpi-value">28 items</span>
       <span class="kpi-sub">everyday goods, five categories</span>
     </div>
     <div class="kpi">
@@ -55,9 +55,10 @@
     </div>
     <p>
       The tracker follows a small, fixed basket of goods that dominate household
-      budgets in Pakistan: staples (wheat flour, sugar, rice, cooking oil),
-      fresh produce (onion, potato), protein (chicken, eggs, milk) and energy
-      (petrol, electricity). Each item is priced in the unit households
+      budgets in Pakistan: staples (wheat flour, sugar, rice, cooking
+      oil, ghee, lentils, besan, tea), fresh produce (onion, potato, tomato,
+      garlic, ginger, banana, apple), protein (chicken, eggs, milk, yogurt,
+      beef, mutton) and energy (petrol, diesel, LPG, electricity). Each item is priced in the unit households
       actually buy, and every observation is stored with its own provenance.
     </p>
     <p class="hint">
@@ -82,17 +83,34 @@
             <th scope="col">Reference price (PKR)</th>
           </tr>
         </thead>
-        <tbody>
+                <tbody>
           <tr><td class="nm">Wheat flour (atta)</td><td>Grocery</td><td>per 20 kg bag</td><td>1,950</td></tr>
           <tr><td class="nm">Sugar</td><td>Grocery</td><td>per kg</td><td>150</td></tr>
           <tr><td class="nm">Basmati rice</td><td>Grocery</td><td>per kg</td><td>210</td></tr>
+          <tr><td class="nm">Rice (Irri-6)</td><td>Grocery</td><td>per kg</td><td>165</td></tr>
           <tr><td class="nm">Cooking oil</td><td>Grocery</td><td>per 5 L</td><td>2,400</td></tr>
+          <tr><td class="nm">Vegetable ghee</td><td>Grocery</td><td>per kg</td><td>590</td></tr>
+          <tr><td class="nm">Gram lentil (chana daal)</td><td>Grocery</td><td>per kg</td><td>265</td></tr>
+          <tr><td class="nm">Mash lentil</td><td>Grocery</td><td>per kg</td><td>430</td></tr>
+          <tr><td class="nm">Masoor lentil</td><td>Grocery</td><td>per kg</td><td>285</td></tr>
+          <tr><td class="nm">Gram flour (besan)</td><td>Grocery</td><td>per kg</td><td>275</td></tr>
+          <tr><td class="nm">Tea (packed)</td><td>Grocery</td><td>per kg</td><td>1,950</td></tr>
           <tr><td class="nm">Onion</td><td>Fresh produce</td><td>per kg</td><td>110</td></tr>
           <tr><td class="nm">Potato</td><td>Fresh produce</td><td>per kg</td><td>60</td></tr>
+          <tr><td class="nm">Tomato</td><td>Fresh produce</td><td>per kg</td><td>110</td></tr>
+          <tr><td class="nm">Garlic</td><td>Fresh produce</td><td>per kg</td><td>480</td></tr>
+          <tr><td class="nm">Ginger</td><td>Fresh produce</td><td>per kg</td><td>380</td></tr>
+          <tr><td class="nm">Banana</td><td>Fresh produce</td><td>per dozen</td><td>150</td></tr>
+          <tr><td class="nm">Apple</td><td>Fresh produce</td><td>per kg</td><td>260</td></tr>
           <tr><td class="nm">Chicken</td><td>Poultry</td><td>per kg</td><td>560</td></tr>
-          <tr><td class="nm">Eggs</td><td>Dairy &amp; protein</td><td>per dozen</td><td>340</td></tr>
-          <tr><td class="nm">Fresh milk</td><td>Dairy &amp; protein</td><td>per litre</td><td>220</td></tr>
+          <tr><td class="nm">Eggs</td><td>Dairy & protein</td><td>per dozen</td><td>340</td></tr>
+          <tr><td class="nm">Fresh milk</td><td>Dairy & protein</td><td>per litre</td><td>220</td></tr>
+          <tr><td class="nm">Yogurt (curd)</td><td>Dairy & protein</td><td>per kg</td><td>200</td></tr>
+          <tr><td class="nm">Beef</td><td>Dairy & protein</td><td>per kg</td><td>850</td></tr>
+          <tr><td class="nm">Mutton</td><td>Dairy & protein</td><td>per kg</td><td>2,300</td></tr>
           <tr><td class="nm">Petrol (super)</td><td>Energy</td><td>per litre</td><td>268</td></tr>
+          <tr><td class="nm">Diesel (high speed)</td><td>Energy</td><td>per litre</td><td>288</td></tr>
+          <tr><td class="nm">LPG</td><td>Energy</td><td>per kg</td><td>250</td></tr>
           <tr><td class="nm">Electricity</td><td>Energy</td><td>per kWh</td><td>34</td></tr>
         </tbody>
       </table>
@@ -122,7 +140,7 @@
     </div>
     <p>
       The index is an equal-weighted sum of item prices. On any date, the basket
-      cost is the sum of the 11 item prices for that week. The index on a date
+      cost is the sum of the 28 item prices for that week. The index on a date
       equals the basket cost on that date divided by the basket cost on the first
       date of the selected window, multiplied by 100. The first point of every
       window is therefore always 100, and the last point shows the percentage
@@ -190,7 +208,7 @@
           <tr><th scope="col">Endpoint</th><th scope="col">Returns</th></tr>
         </thead>
         <tbody>
-          <tr><td class="nm">/api/items</td><td>the 11 basket items with category and unit</td></tr>
+          <tr><td class="nm">/api/items</td><td>the 28 basket items with category and unit</td></tr>
           <tr><td class="nm">/api/series</td><td>filtered price observations, by date range and item</td></tr>
           <tr><td class="nm">/api/index</td><td>basket cost index, re-based to 100 at the window start</td></tr>
           <tr><td class="nm">/api/metrics</td><td>headline cards: basket change, riser, faller</td></tr>

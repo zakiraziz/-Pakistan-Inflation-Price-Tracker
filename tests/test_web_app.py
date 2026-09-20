@@ -9,6 +9,7 @@ rejects with 429 when a limit really is exceeded.
 from __future__ import annotations
 
 import app as app_mod
+import model
 
 # Registered at import (collection) time: Flask forbids adding routes after the
 # app has handled its first request, and the app singleton is shared by every
@@ -27,26 +28,27 @@ def test_healthz_ok(client):
     assert r.status_code == 200
     body = r.get_json()
     assert body["status"] == "ok"
-    assert body["items"] == 11
+    assert body["items"] == len(model.ITEMS)
     assert body["approved_points"] > 0
 
 
 def test_pending_are_hidden_until_approved(client):
+    n = len(model.ITEMS)
     # ingest a far-future week in manual mode -> all points held pending
     r = client.post("/ingest/next", json={"date": "2026-12-01", "auto_approve": False})
     assert r.status_code == 200
-    assert r.get_json()["counts"]["pending"] == 11
+    assert r.get_json()["counts"]["pending"] == n
 
     # pending data must NOT appear in the public index
     series = client.get("/api/series?start=2026-01-01").get_json()
     assert all(row["date"] <= "2026-06-28" for row in series)
 
     pend = client.get("/api/admin/pending").get_json()
-    assert len(pend) == 11
+    assert len(pend) == n
 
     # approving lifts them into the index
     r = client.post("/api/admin/approve", json={"all": True})
-    assert r.get_json()["approved"] == 11
+    assert r.get_json()["approved"] == n
     series = client.get("/api/series?start=2026-01-01").get_json()
     assert max(row["date"] for row in series) > "2026-06-28"
 

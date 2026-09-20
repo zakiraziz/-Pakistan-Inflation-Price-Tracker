@@ -147,7 +147,11 @@ if __name__ == "__main__":
     check("GET /healthz 200", s == 200, f"status={s}")
     if s == 200:
         check("healthz.status == ok", d.get("status") == "ok", f"got={d.get('status')}")
-        check("healthz.items == 11", d.get("items") == 11, f"got={d.get('items')}")
+        check(
+            "healthz.items == basket size",
+            d.get("items") == len(__import__("model").ITEMS),
+            f"got={d.get('items')}",
+        )
         check(
             "healthz.approved_points > 0",
             d.get("approved_points", 0) > 0,
