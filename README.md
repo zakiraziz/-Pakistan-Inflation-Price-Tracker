@@ -3,6 +3,7 @@
 [![CI](https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![Deploy to Render](https://img.shields.io/badge/Render-Deploy%20this%20repo-46E3B8?logo=render)](https://render.com/deploy?repo=https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker)
 
 ![Dashboard](dashboard.png)
 
@@ -257,9 +258,14 @@ seed → tests with coverage → live web checks on every push.
 
 Because everything is a single `app.py` with a flat-file DB:
 
-- **Render (recommended, one click)** — a Blueprint is included
-  (`render.yaml`): push to GitHub, then in Render choose **New → Blueprint**
-  and accept the plan. It provisions one free web service that:
+- **Render (recommended, one click)** — click the **Deploy to Render** badge
+  at the top of this README (or <https://render.com/deploy?repo=https://github.com/zakiraziz/-Pakistan-Inflation-Price-Tracker>).
+  It opens the Blueprint flow with this repo preselected; the plan comes from
+  `render.yaml` (one free web service, `/healthz` health check, database seeded
+  at boot). When prompted for **ADMIN_TOKEN**, paste a long random secret —
+  e.g. on your machine:
+  `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+  Leave it empty only if you want a strictly read-only demo. The service:
   - builds with `pip install -r requirements.txt`,
   - **seeds the database at boot** via `boot.py` (free tiers have an ephemeral
     filesystem — this guarantees `/healthz` is ready on the first boot and
