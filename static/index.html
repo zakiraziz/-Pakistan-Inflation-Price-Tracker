@@ -28,6 +28,7 @@
         <span class="live-dot" aria-hidden="true"></span><span class="live-text" id="liveText">Connecting…</span>
       </span>
       <span class="updated">
+        <span class="fresh-dot" id="freshDot" aria-hidden="true"></span>
         <span id="updatedBadge">Loading latest data…</span>
         <span class="updated-age" id="liveAge">syncing…</span>
       </span>
@@ -81,9 +82,11 @@
 
     <div class="group grow">
       <label class="label" for="search">Search basket</label>
-      <input type="text" id="search" class="grow-in" placeholder="Filter items…" autocomplete="off" />
+      <input type="text" id="search" class="grow-in" placeholder="Search items — e.g. onion, petrol…" autocomplete="off" />
     </div>
   </section>
+
+  <section class="search-panel" id="searchPanel" aria-live="polite"></section>
 
   <section class="kpis" id="kpis" aria-label="Headline statistics">
     <div class="kpi">
@@ -117,6 +120,14 @@
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
       Compare
     </button>
+    <button data-view="categories" class="tab" role="tab" aria-selected="false">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l8 4"/></svg>
+      Categories
+    </button>
+    <button data-view="mybasket" class="tab" role="tab" aria-selected="false">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      My basket
+    </button>
     <button data-view="data" class="tab" role="tab" aria-selected="false">
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg>
       Data
@@ -133,6 +144,8 @@
   </section>
 
   <section class="view" id="view" aria-live="polite"></section>
+
+  <section class="why" id="moversPanel" aria-label="What changed and why"></section>
 
   <section class="alerts" id="alertsPanel" aria-label="Price jump alerts">
     <div class="alert-top">
