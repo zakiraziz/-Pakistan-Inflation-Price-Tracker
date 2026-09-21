@@ -43,6 +43,8 @@
     <div class="group">
       <span class="label" id="lbl-range">Time range</span>
       <div class="presets" role="group" aria-labelledby="lbl-range">
+        <button class="preset" data-days="7">1W</button>
+        <button class="preset" data-days="30">1M</button>
         <button class="preset" data-months="3">3M</button>
         <button class="preset" data-months="6">6M</button>
         <button class="preset" data-months="12">1Y</button>
@@ -67,8 +69,12 @@
       <span class="label" aria-hidden="true">&nbsp;</span>
       <div class="row2">
         <button id="apply" class="btn">Apply</button>
-        <button id="export" class="btn-ghost btn" title="Download CSV of this view" aria-label="Download CSV">
+        <button id="export" class="btn-ghost btn" title="Download CSV of this view (opens in Excel)" aria-label="Download CSV">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        </button>
+        <button id="exportJson" class="btn-ghost btn" title="Download JSON of this view" aria-label="Download JSON">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+          <span class="btn-tag">JSON</span>
         </button>
       </div>
     </div>
