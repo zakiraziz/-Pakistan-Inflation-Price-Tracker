@@ -218,17 +218,32 @@ curl -X POST https://<your-service>.onrender.com/ingest/next \
 
 A full responsive dashboard (Flask + SQLite + Chart.js, Inter font):
 
-- **Hero header** with a live "latest price" badge and an **Update data** ingest button.
-- **KPI cards** — Basket cost change, **Annualised inflation**, **Year-over-year**,
-  and **price-jump count** for the selected window.
-- **Three views (tabs):**
+- **Hero header** with a **freshness dot** (green while the weekly series is
+  current, amber when an update is overdue — tooltip states the exact age),
+  the live-connection pill, the latest-week badge, and an **Update data**
+  ingest button.
+- **KPI cards** — **Basket change (equal-weight)** with start → end totals,
+  **Items in view**, **Biggest riser** and **Biggest faller** for the window.
+- **Five views (tabs):**
   - **Trends** — line charts of each item's prices, or the whole-basket cost index.
   - **Compare** — horizontal bar chart of % change since the range start (who rose most).
-  - **Data** — sortable table (start / latest / change per item).
-- **Controls** — date presets (3M / 6M / 1Y / All) + custom range, alert threshold, CSV export.
+  - **Categories** — equal-weight average change per category, with up/down counts.
+  - **My basket** — build a personal basket (ticks are saved on the device):
+    "Your basket: +X% over this window", plus per-item **watchlist stars** —
+    while the page is open, a watched item moving ≥ the alert threshold raises
+    a toast and a browser notification (device-local; no account, no email).
+  - **Data** — sortable table (category, unit, range start / latest / change per item).
+- **What changed & why** panel — biggest increases and decreases, per-category
+  bars, and a rules-based plain-language summary that cites only the numbers
+  rendered next to it (transparent by construction — not an AI).
+- **Search answer cards** — searching an item shows current price, previous
+  price, % change, category and last-updated date with an inline sparkline.
+- **Controls** — date presets (1W / 1M / 3M / 6M / 1Y / All) + custom range,
+  alert threshold, and **CSV + JSON export** of the current view.
 - **Basket filters** — category chips, item checklist, and a live **search box**.
 - **Alerts panel** — items that jumped ≥ the threshold week-on-week, largest jump highlighted.
-- Loading spinners, friendly empty states, toasts, custom scrollbars, mobile layout.
+- **Footer** with live dataset stats (items, approved points, latest week, review queue).
+- Loading skeletons, friendly empty states, toasts, custom scrollbars, mobile layout.
 
 > Tip: append `?nolive=1` to the URL for a static render without the live
 > stream — used by `shot.py` for screenshots (a permanently-open SSE connection
