@@ -330,3 +330,117 @@ function renderData(container, pivot) {
     '<th scope="col">Range start</th><th scope="col">Latest</th>' +
     '<th scope="col">Change</th></tr></thead><tbody>' + rows + "</tbody></table></div>";
 }
+
+/* ==========================================================================
+   Inflation-intelligence helpers (pure functions over the pivot window).
+   Everything these produce is computed from the numbers already on screen —
+   no model, no estimates, nothing hidden.
+   ========================================================================== */
+
+function daysAgo(n) {
+  var d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+/* Equal-weight per-category summary of the selected window. */
+function categoryChanges(pivot) {
+  var byCat = {};
+  (pivot.items || []).forEach(function (it) {
+    (byCat[it.category] = byCat[it.category] || []).push(it.pct);
+  });
+  return Object.keys(byCat).map(function (cat) {
+    var arr = byCat[cat], sum = 0, up = 0, down = 0;
+    arr.forEach(function (v) { sum += v; if (v >= 0) up++; else down++; });
+    return { category: cat, count: arr.length, pct: sum / arr.length, up: up, down: down };
+  }).sort(function (a, b) { return b.pct - a.pct; });
+}
+
+function topMovers(pivot, k) {
+  var sorted = (pivot.items || []).slice().sort(function (a, b) { return b.pct - a.pct; });
+  var risers = sorted.filter(function (it) { return it.pct > 0; }).slice(0, k);
+  var fallers = sorted.filter(function (it) { return it.pct < 0; }).slice(-k).reverse();
+  return { risers: risers, fallers: fallers };
+}
+
+/* Rules-based plain-language summary. It only cites numbers that are rendered
+   next to it - transparent by construction. */
+function narrative(pivot, metrics) {
+  if (!pivot.items || !pivot.items.length) return "";
+  var m = topMovers(pivot, 1);
+  var cats = categoryChanges(pivot);
+  var risen = pivot.items.filter(function (it) { return it.pct >= 0; }).length;
+  var avg = pivot.items.reduce(function (s, it) { return s + it.pct; }, 0) / pivot.items.length;
+  var parts = [];
+  parts.push(
+    risen + " of " + pivot.items.length + " tracked items rose over this window" +
+    (metrics && metrics.weeks ? " (" + metrics.weeks + " weeks)" : "") +
+    "; the average move was " + pct(avg) + "."
+  );
+  if (cats.length) {
+    var lead = cats[0], lag = cats[cats.length - 1];
+    parts.push(
+      esc(lead.category) + " moved most (" + pct(lead.pct) + " average across " +
+      lead.count + " items — " + lead.up + " up, " + lead.down + " down)" +
+      (lag !== lead ? ", while " + esc(lag.category) + " was calmest (" + pct(lag.pct) + ")." : ".")
+    );
+  }
+  if (m.risers.length) {
+    var r = m.risers[0];
+    parts.push("Biggest rise: " + esc(r.name) + " " + pct(r.pct) +
+      " (" + money(r.first) + " → " + money(r.last) + " " + esc(r.unit) + ").");
+  }
+  if (m.fallers.length) {
+    var f = m.fallers[0];
+    parts.push("Biggest fall: " + esc(f.name) + " " + pct(f.pct) + ".");
+  }
+  parts.push("Generated from the visible numbers only — no model, no estimates.");
+  return parts.join(" ");
+}
+
+function renderSparkline(prices, w, h, color) {
+  var data = (prices || []).filter(function (v) { return v != null; });
+  if (data.length < 2) return "";
+  var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+  var span = (max - min) || 1;
+  var step = w / (data.length - 1);
+  var pts = data.map(function (v, i) {
+    return (i * step).toFixed(1) + "," + (h - 2 - ((v - min) / span) * (h - 4)).toFixed(1);
+  }).join(" ");
+  var up = data[data.length - 1] >= data[0];
+  var c = color || (up ? UP : DOWN);
+  return '<svg class="spark" viewBox="0 0 ' + w + " " + h + '" width="' + w +
+    '" height="' + h + '" role="img" aria-label="Price trend">' +
+    '<polyline fill="none" stroke="' + c + '" stroke-width="2" points="' + pts + '"/></svg>';
+}
+
+/* "What changed & why" panel: top movers, per-category bars, and the summary. */
+function renderWhyPanel(container, pivot, metrics) {
+  if (!pivot.items || !pivot.items.length) { container.innerHTML = ""; return; }
+  var m = topMovers(pivot, 3);
+  var cats = categoryChanges(pivot);
+  var maxAbs = Math.max.apply(null, cats.map(function (c) { return Math.abs(c.pct); }).concat([1]));
+  var chip = function (it) {
+    return '<div class="why-chip"><span class="al-name">' + esc(it.name) +
+      '</span><span class="al-cat">' + esc(it.category) + '</span>' +
+      '<span class="al-pct ' + pctCls(it.pct) + '">' + pct(it.pct) + '</span></div>';
+  };
+  var bars = cats.map(function (c) {
+    return '<div class="catbar"><span class="catbar-label">' + esc(c.category) + '</span>' +
+      '<span class="catbar-track"><span class="catbar-fill ' + pctCls(c.pct) +
+      '" style="width:' + Math.max(2, Math.round(Math.abs(c.pct) / maxAbs * 100)) + '%"></span></span>' +
+      '<span class="catbar-val ' + pctCls(c.pct) + '">' + pct(c.pct) + '</span>' +
+      '<span class="catbar-sub">' + c.count + " items</span></div>";
+  }).join("");
+  container.innerHTML =
+    '<div class="viewhead"><span class="viewtitle">What changed &amp; why</span>' +
+    '<span class="view-sub">equal-weight · computed from the visible numbers</span></div>' +
+    '<div class="why-grid">' +
+      '<div class="why-box"><h3>Biggest increases</h3>' + m.risers.map(chip).join("") + '</div>' +
+      '<div class="why-box"><h3>Biggest decreases</h3>' +
+        (m.fallers.length ? m.fallers.map(chip).join("") : '<p class="hint">Nothing fell in this window.</p>') +
+      '</div>' +
+      '<div class="why-box why-cats"><h3>By category (average change)</h3>' + bars + '</div>' +
+    '</div>' +
+    '<p class="why-note">' + narrative(pivot, metrics) + '</p>';
+}

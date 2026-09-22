@@ -64,6 +64,8 @@
         renderTab();
         renderInfo(metrics);
         refreshItems();        /* now we know the % change for each item */
+        renderWhyPanel(el("moversPanel"), pivot, metrics);
+        checkWatchlist(pivot);
       }).catch(function (err) {
         if (thisReq !== reqId) return;
         renderError(el("view"), err.message || "Could not load data");
@@ -114,6 +116,14 @@
     elInfo.textContent = m.count + " items · " + m.weeks + " weeks · " + rng;
     /* Clear the "Loading latest data…" placeholder once real data arrives. */
     if (badge) badge.textContent = "Latest week " + (m.last_date || "unknown");
+    /* Freshness: green while the latest approved week is recent for a weekly
+       series (≤10 days), amber once the data is getting old. */
+    var dot = el("freshDot");
+    if (dot && m.last_date) {
+      var ageDays = Math.round((Date.now() - new Date(m.last_date + "T00:00:00Z").getTime()) / 86400000);
+      dot.className = "fresh-dot " + (ageDays <= 10 ? "fresh" : "stale");
+      dot.title = "Data through " + m.last_date + " (" + ageDays + " days old)";
+    }
   }
 
   function renderAlerts(panel, alerts) {
@@ -150,6 +160,8 @@
     var con = el("view");
     if (tab === "trends") renderTrends(con, pivot, trendSub);
     else if (tab === "compare") renderCompare(con, pivot);
+    else if (tab === "categories") renderCategoryView(con, pivot);
+    else if (tab === "mybasket") renderMyBasket(con, pivot);
     else renderData(con, pivot);
   }
 
@@ -235,6 +247,7 @@
         b.addEventListener("click", function () {
           var d = b.dataset;
           if (d.all) setStartEnd("", "");
+          else if (d.days) setStartEnd(daysAgo(Number(d.days)), "");
           else if (d.months) setStartEnd(monthsAgo(Number(d.months)), "");
           load();
         });
@@ -245,7 +258,10 @@
       var searchTimer = null;
       searchBox.addEventListener("input", function () {
         if (searchTimer) clearTimeout(searchTimer);
-        searchTimer = setTimeout(refreshItems, 150);
+        searchTimer = setTimeout(function () {
+          refreshItems();
+          updateSearchPanel();
+        }, 150);
       });
     }
     el("export").addEventListener("click", function () {
@@ -257,9 +273,196 @@
       a.click();
       a.remove();
     });
+    /* JSON export for developers/journalists: items + metrics + the series. */
+    var ej = el("exportJson");
+    if (ej) {
+      ej.addEventListener("click", function () {
+        Promise.all([
+          getJSON("/api/series" + query()),
+          getJSON("/api/metrics" + query()),
+          getJSON("/api/items"),
+        ]).then(function (res) {
+          var blob = new Blob([JSON.stringify({
+            generated_at: new Date().toISOString(),
+            window: { start: start || null, end: end || null },
+            items: res[2], metrics: res[1], series: res[0],
+          }, null, 2)], { type: "application/json" });
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "pakistan-prices_" + (start || "all") + ".json";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+          toast("JSON downloaded");
+        }, function () { toast("JSON export failed"); });
+      });
+    }
     el("updateNow").addEventListener("click", function () {
       runUpdate();
     });
+  }
+
+  /* ---------- categories view: equal-weight change per category ---------- */
+  function renderCategoryView(container, pivot) {
+    if (!pivot.items.length) {
+      renderEmpty(container, "No rows in this window",
+        "Widen the date range or re-enable some items.", "trend");
+      return;
+    }
+    var cats = categoryChanges(pivot);
+    var maxAbs = Math.max.apply(null, cats.map(function (c) { return Math.abs(c.pct); }).concat([1]));
+    var bars = cats.map(function (c) {
+      return '<div class="catbar"><span class="catbar-label">' + esc(c.category) + '</span>' +
+        '<span class="catbar-track"><span class="catbar-fill ' + pctCls(c.pct) +
+        '" style="width:' + Math.max(2, Math.round(Math.abs(c.pct) / maxAbs * 100)) + '%"></span></span>' +
+        '<span class="catbar-val ' + pctCls(c.pct) + '">' + pct(c.pct) + '</span>' +
+        '<span class="catbar-sub">' + c.count + " items · " + c.up + " up / " + c.down + " down</span></div>";
+    }).join("");
+    container.innerHTML =
+      '<div class="viewhead"><span class="viewtitle">Categories</span>' +
+      '<span class="view-sub">equal-weight average change over the window</span></div>' +
+      '<div class="catbars">' + bars + '</div>' +
+      '<p class="hint">Each category average is the simple mean of its items\u2019 changes — ' +
+      'the same equal-weight method as the headline basket, so the numbers add up.</p>';
+  }
+
+  /* ---------- my basket: personal equal-weight basket + watchlist ---------- */
+  function myBasketIds() {
+    try { return JSON.parse(localStorage.getItem("myBasket") || "[]"); } catch (e) { return []; }
+  }
+  function saveMyBasketIds(names) {
+    try { localStorage.setItem("myBasket", JSON.stringify(names)); } catch (e) { /* ignore */ }
+  }
+  function watchIds() {
+    try { return JSON.parse(localStorage.getItem("watchlist") || "[]"); } catch (e) { return []; }
+  }
+  function saveWatchIds(names) {
+    try { localStorage.setItem("watchlist", JSON.stringify(names)); } catch (e) { /* ignore */ }
+  }
+
+  function renderMyBasket(container, pivot) {
+    var chosen = myBasketIds();
+    var byName = {};
+    (pivot.items || []).forEach(function (it) { byName[it.name] = it; });
+    var picked = chosen.filter(function (n) { return byName[n]; });
+    var headline;
+    if (picked.length) {
+      var avg = picked.reduce(function (s, n) { return s + byName[n].pct; }, 0) / picked.length;
+      headline = '<div class="mb-head"><span class="mb-total">Your basket: <b class="' +
+        pctCls(avg) + '">' + pct(avg) + "</b> over this window</span>" +
+        '<span class="hint">equal-weight average of ' + picked.length + " item(s)</span></div>";
+    } else {
+      headline = '<div class="mb-head"><span class="hint">Tick items below to build your own ' +
+        'basket — the number updates with the date range you choose.</span></div>';
+    }
+    var watched = watchIds();
+    var rows = (pivot.items || []).map(function (it) {
+      var on = chosen.indexOf(it.name) !== -1;
+      var bell = watched.indexOf(it.name) !== -1;
+      return '<label class="mb-row' + (on ? " on" : "") + '">' +
+        '<input type="checkbox" data-mb="' + esc(it.name) + '"' + (on ? " checked" : "") + "/>" +
+        '<span class="mb-name">' + esc(it.name) + '</span>' +
+        '<span class="al-cat">' + esc(it.category) + " · " + esc(it.unit) + '</span>' +
+        '<span class="al-pct ' + pctCls(it.pct) + '">' + pct(it.pct) + "</span>" +
+        '<button type="button" class="watch' + (bell ? " on" : "") +
+        '" data-watch="' + esc(it.name) + '" title="Notify me when this item moves by at least the alert threshold">' +
+        (bell ? "\u2605" : "\u2606") + "</button></label>";
+    }).join("");
+    container.innerHTML =
+      '<div class="viewhead"><span class="viewtitle">My basket</span>' +
+      '<span class="view-sub">your own equal-weight basket · saved on this device</span></div>' +
+      headline +
+      '<div class="mb-list">' + rows + "</div>" +
+      '<p class="hint">The star marks watched items: while this page is open you get a toast ' +
+      '(and a browser notification, if you allow it) whenever a watched item moves by at least ' +
+      'the alert threshold. Device-local only — no account, no email, nothing leaves your browser.</p>';
+    var boxes = container.querySelectorAll("[data-mb]");
+    for (var i = 0; i < boxes.length; i++) {
+      (function (box) {
+        box.addEventListener("change", function () {
+          var names = myBasketIds();
+          var name = box.getAttribute("data-mb");
+          if (box.checked) { if (names.indexOf(name) === -1) names.push(name); }
+          else { names = names.filter(function (n) { return n !== name; }); }
+          saveMyBasketIds(names);
+          renderMyBasket(container, pivot);
+        });
+      })(boxes[i]);
+    }
+    var bells = container.querySelectorAll("[data-watch]");
+    for (var j = 0; j < bells.length; j++) {
+      (function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.preventDefault();          /* stop the surrounding label from toggling */
+          var names = watchIds();
+          var name = btn.getAttribute("data-watch");
+          var on = names.indexOf(name) !== -1;
+          if (on) { names = names.filter(function (n) { return n !== name; }); }
+          else {
+            names.push(name);
+            if (window.Notification && Notification.permission === "default") {
+              try { Notification.requestPermission(); } catch (e) { /* ignore */ }
+            }
+            toast("Watching " + name + " — alerts at \u2265 " + thresholdVal() + "%");
+          }
+          saveWatchIds(names);
+          renderMyBasket(container, pivot);
+        });
+      })(bells[j]);
+    }
+  }
+
+  function checkWatchlist(pivot) {
+    var names = watchIds();
+    if (!names.length) return;
+    var th = thresholdVal();
+    (pivot.items || []).forEach(function (it) {
+      if (names.indexOf(it.name) === -1) return;
+      if (Math.abs(it.pct) >= th) {
+        toast("\u23f0 " + it.name + " " + pct(it.pct) + " over the window");
+        if (window.Notification && Notification.permission === "granted") {
+          try {
+            new Notification("Price alert: " + it.name, {
+              body: pct(it.pct) + " over the selected window — now " + money(it.last) + " " + it.unit,
+            });
+          } catch (e) { /* ignore */ }
+        }
+      }
+    });
+  }
+
+  /* ---------- search: instant answer card with sparkline ----------------- */
+  function updateSearchPanel() {
+    var panel = el("searchPanel");
+    var box = el("search");
+    if (!panel || !box) return;
+    var term = box.value.trim().toLowerCase();
+    if (!term) { panel.innerHTML = ""; return; }
+    var byName = {};
+    (pivot.items || []).forEach(function (it) { byName[it.name] = it; });
+    var matches = items.filter(function (it) {
+      return (it.name + " " + it.category).toLowerCase().indexOf(term) !== -1;
+    }).slice(0, 3);
+    if (!matches.length) {
+      panel.innerHTML = '<span class="hint">No basket item matches \u201c' + esc(term) + '\u201d.</span>';
+      return;
+    }
+    var lastDate = pivot.dates.length ? pivot.dates[pivot.dates.length - 1] : "\u2014";
+    var cards = matches.map(function (it) {
+      var p = byName[it.name];
+      if (!p) return "";
+      var prices = p.prices || [];
+      var prev = prices.length > 1 ? prices[prices.length - 2] : p.first;
+      return '<div class="search-card">' + renderSparkline(prices, 140, 40) +
+        '<div class="sc-main"><span class="al-name">' + esc(it.name) + '</span>' +
+        '<span class="al-cat">' + esc(it.category) + " · " + esc(it.unit) + '</span>' +
+        '<span class="hint">updated ' + esc(lastDate) + '</span></div>' +
+        '<div class="sc-nums"><span>prev ' + money(prev) + "</span>" +
+        '<span>now <b>' + money(p.last) + "</b></span>" +
+        '<span class="al-pct ' + pctCls(p.pct) + '">' + pct(p.pct) + "</span></div></div>";
+    }).join("");
+    panel.innerHTML = cards;
   }
 
   function sessionToken() {

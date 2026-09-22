@@ -59,6 +59,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   post-deploy smoke-test instructions.
 
 ### Changed
+- **"Inflation intelligence" layer** (all computed client-side from the visible
+  pivot numbers — no backend change, no invented data):
+  - **What changed & why** panel: top risers/fallers for the selected window,
+    per-category equal-weight bars, and a rules-based plain-language summary
+    that cites only the numbers rendered next to it (labelled as such — not AI).
+  - **Categories tab**: equal-weight average change per category with up/down
+    counts.
+  - **My basket tab**: personal basket (ticks saved on the device) showing
+    "Your basket: +X% over this window", plus a per-item **watchlist** — while
+    the page is open, watched items moving ≥ the alert threshold raise a toast
+    and a browser notification (device-local; no account, no email).
+  - **Search answer cards**: searching an item shows current price, previous
+    price, change, category, last-updated date and an inline sparkline.
+  - **1W / 1M presets** alongside 3M/6M/1Y/All; **JSON export** button next to
+    CSV (items + metrics + series for the current view); **freshness dot** on
+    the latest-week badge (green ≤10 days old, amber when the weekly series
+    ages); mobile rules for the new panels.
+- `shot.py` DOM checks are now deterministic (static render + virtual-time
+  budget) and cover the footer and why-panel.
+- **Not added, honestly**: provincial/city comparison — the dataset is a single
+  national series, so per-city numbers would be fabricated. Email/push alert
+  delivery — needs a backend; the client-side watchlist covers the common case.
 - Test isolation: the shared `client` fixture now resets the app singleton's
   rate limiter and response cache per test instead of relying on a clean
   process — the limiter itself stays exercised.

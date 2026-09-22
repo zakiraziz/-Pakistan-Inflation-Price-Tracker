@@ -67,7 +67,9 @@ def main():
         if not wait_server(server):
             print("SERVER_FAILED_TO_BOOT")
             return 1
-        # 1) DOM check via --dump-dom
+        # 1) DOM check via --dump-dom. Static mode + virtual time budget: the
+        #    fetches must have settled before the dump, otherwise we check
+        #    skeletons instead of content.
         dom = subprocess.run(
             [
                 chrome,
@@ -75,8 +77,9 @@ def main():
                 "--disable-gpu",
                 "--no-sandbox",
                 f"--user-data-dir={prof}",
+                "--virtual-time-budget=9000",
                 "--dump-dom",
-                BASE + "/",
+                BASE + "/?nolive=1",
             ],
             capture_output=True,
             text=True,
@@ -102,6 +105,7 @@ def main():
             "search box present": 'id="search"' in html,
             "live pill present": 'id="livePill"' in html,
             "footer rendered": "foot-grid" in html,
+            "why panel rendered": 'id="moversPanel"' in html,
             "no error state": "Something went wrong" not in html,
             "no leftover skeletons": "skeleton" not in html,
         }
@@ -120,7 +124,7 @@ def main():
                     "--disable-gpu",
                     "--no-sandbox",
                     f"--user-data-dir={prof}",
-                    "--window-size=1280,1900",
+                    "--window-size=1280,2400",
                     "--virtual-time-budget=9000",
                     f"--screenshot={shot}",
                     BASE + "/?nolive=1",
