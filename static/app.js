@@ -78,7 +78,7 @@
     var riser = m.biggest_riser || null;
     var faller = m.biggest_faller || null;
     var cards = [
-      { label: "Basket change",
+      { label: "Basket change (equal-weight)",
         value: pct(basketPct),
         sub: money(m.start_total) + " \u2192 " + money(m.end_total),
         cls: pctCls(basketPct) },
@@ -116,13 +116,19 @@
     elInfo.textContent = m.count + " items · " + m.weeks + " weeks · " + rng;
     /* Clear the "Loading latest data…" placeholder once real data arrives. */
     if (badge) badge.textContent = "Latest week " + (m.last_date || "unknown");
-    /* Freshness: green while the latest approved week is recent for a weekly
-       series (≤10 days), amber once the data is getting old. */
+    /* Freshness semantics for a WEEKLY series: the newest point is "fresh"
+       while the next observation is still due (cadence + a grace week, i.e.
+       <= 13 days). Amber from day 14 means "a weekly update is overdue",
+       not merely "the number is a few days old". The tooltip always states
+       the exact age in days so the colour can be checked against it. */
     var dot = el("freshDot");
     if (dot && m.last_date) {
-      var ageDays = Math.round((Date.now() - new Date(m.last_date + "T00:00:00Z").getTime()) / 86400000);
-      dot.className = "fresh-dot " + (ageDays <= 10 ? "fresh" : "stale");
-      dot.title = "Data through " + m.last_date + " (" + ageDays + " days old)";
+      var ms = Date.now() - new Date(m.last_date + "T00:00:00Z").getTime();
+      var ageDays = Math.floor(ms / 86400000);
+      var fresh = ageDays <= 13;   /* 7-day cadence + one grace week */
+      dot.className = "fresh-dot " + (fresh ? "fresh" : "stale");
+      dot.title = "Data through " + m.last_date + " (" + ageDays + " days old)" +
+        (fresh ? " — next weekly update due" : " — weekly update overdue");
     }
   }
 
@@ -282,10 +288,17 @@
           getJSON("/api/metrics" + query()),
           getJSON("/api/items"),
         ]).then(function (res) {
+          var metrics = res[1] || {};
           var blob = new Blob([JSON.stringify({
             generated_at: new Date().toISOString(),
-            window: { start: start || null, end: end || null },
-            items: res[2], metrics: res[1], series: res[0],
+            window: {
+              /* resolve what the API actually used, not what the inputs were */
+              requested: { start: start || null, end: end || null },
+              start: metrics.first_date || start || null,
+              end: metrics.last_date || end || null,
+              weeks: metrics.weeks || null,
+            },
+            items: res[2], metrics: metrics, series: res[0],
           }, null, 2)], { type: "application/json" });
           var a = document.createElement("a");
           a.href = URL.createObjectURL(blob);
