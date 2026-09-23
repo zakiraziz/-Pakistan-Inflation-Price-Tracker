@@ -1,0 +1,532 @@
+   1| """
+   2| app.py
+   3| ------
+   4| Flask API + dashboard for the Pakistan Inflation / Price Tracker.
+   5| 
+   6| Endpoints
+   7| ---------
+   8| GET  /                 -> dashboard (static/index.html)
+   9| GET  /api/items        -> list of tracked items
+  10| GET  /api/series?start=&end=&items=  -> filtered time-series
+  11| GET  /api/alerts?threshold= -> latest price-jump alerts
+  12| GET  /api/live         -> freshness snapshot (data revision + counts)
+  13| GET  /api/stream       -> Server-Sent Events: live updates + heartbeats
+  14| POST /ingest/next      -> run the ingest job (adds next week + recomputes alerts)
+  15| 
+  16| Run locally:
+  17|     python app.py
+  18| then open  http://127.0.0.1:5010
+  19| """
+  20| 
+  21| from __future__ import annotations
+  22| 
+  23| import contextlib
+  24| import os
+  25| import time
+  26| 
+  27| from flask import Flask, Response, jsonify, make_response, render_template_string, request
+  28| 
+  29| import db
+  30| import log
+  31| from alert import latest_alerts
+  32| from core import live
+  33| from core.auth import install as install_auth
+  34| from core.config import settings
+  35| from core.security import install
+  36| 
+  37| BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+  38| app = Flask(__name__, static_folder="static", static_url_path="/static")
+  39| app.config["FORCE_HTTPS"] = settings.force_https
+  40| 
+  41| # --- caching (flask-caching; CACHE_TYPE=RedisCache to move to Redis) --------
+  42| from flask_caching import Cache  # noqa: E402  (config must precede Cache init)
+  43| 
+  44| app.config["CACHE_TYPE"] = settings.cache_type
+  45| app.config["CACHE_DEFAULT_TIMEOUT"] = settings.cache_ttl
+  46| if settings.redis_url:
+  47|     app.config.setdefault("CACHE_REDIS_URL", settings.redis_url)
+  48| cache = Cache(app)
+  49| 
+  50| # --- rate limiting (Flask-Limiter) ------------------------------------------
+  51| from flask_limiter import Limiter  # noqa: E402  (app/config must exist first)
+  52| from flask_limiter.util import get_remote_address  # noqa: E402
+  53| 
+  54| limiter = Limiter(
+  55|     get_remote_address,
+  56|     app=app,
+  57|     default_limits=[settings.rate_limit_default],
+  58|     storage_uri=settings.rate_limit_storage,
+  59|     headers_enabled=True,
+  60| )  # clients see their budget: X-RateLimit-*
+  61| write_limit = settings.rate_limit_write
+  62| 
+  63| install(app)  # security headers + structured error handling
+  64| install_auth(app)  # admin/write guard (ADMIN_TOKEN, loopback fallback)
+  65| logger = log.get_logger("app")
+  66| 
+  67| DEFAULT_START = "2025-07-01"
+  68| STARTED_AT = time.time()
+  69| 
+  70| 
+  71| def asset_version():
+  72|     """Cache-busting build id: newest mtime of the front-end assets.
+  73| 
+  74|     app.js / helpers.js / live.js / style.css are served with a ?v=<id> stamp so
+  75|     a browser can never keep running an old bundle against new markup (which
+  76|     silently breaks the dashboard: listeners wired but nothing renders).
+  77|     """
+  78|     newest = 0.0
+  79|     for name in ("app.js", "helpers.js", "live.js", "style.css"):
+  80|         with contextlib.suppress(OSError):  # pragma: no cover - asset always shipped
+  81|             newest = max(newest, os.path.getmtime(os.path.join(BASE_DIR, "static", name)))
+  82|     return str(int(newest))
+  83| 
+  84| 
+  85| ASSET_VERSION = asset_version()
+  86| 
+  87| 
+  88| @app.route("/readyz")
+  89| def readyz():
+  90|     """Readiness: the app can serve data (schema present, has approved rows)."""
+  91|     try:
+  92|         con = db.connect()
+  93|         con.execute("SELECT 1 FROM sqlite_master LIMIT 1")
+  94|         approved = con.execute(
+  95|             "SELECT COUNT(*) AS c FROM prices " "WHERE status = ?", (db.STATUS_APPROVED,)
+  96|         ).fetchone()["c"]
+  97|         con.close()
+  98|         ready = approved > 0
+  99|         return jsonify(
+ 100|             {"status": "ready" if ready else "not_ready", "approved_points": approved}
+ 101|         ), (200 if ready else 503)
+ 102|     except Exception as exc:  # pragma: no cover - defensive
+ 103|         return jsonify({"status": "not_ready", "error": str(exc)}), 503
+ 104| 
+ 105| 
+ 106| @app.route("/healthz")
+ 107| def healthz():
+ 108|     ok, detail = True, {}
+ 109|     try:
+ 110|         con = db.connect()
+ 111|         detail["items"] = len(db.get_items(con))
+ 112|         row = con.execute(
+ 113|             "SELECT MAX(date) AS d, COUNT(*) AS c FROM prices " "WHERE status = ?",
+ 114|             (db.STATUS_APPROVED,),
+ 115|         ).fetchone()
+ 116|         detail["latest_date"] = row["d"]
+ 117|         detail["approved_points"] = row["c"]
+ 118|         detail["pending_points"] = db.count_status(con, db.STATUS_PENDING)
+ 119|         con.close()
+ 120|     except Exception as exc:  # pragma: no cover - defensive
+ 121|         ok, detail["error"] = False, str(exc)
+ 122|     detail["uptime_seconds"] = round(time.time() - STARTED_AT, 1)
+ 123|     return jsonify({"status": "ok" if ok else "degraded", **detail}), (200 if ok else 503)
+ 124| 
+ 125| 
+ 126| @app.route("/")
+ 127| def index():
+ 128|     """Dashboard shell, stamped with the asset build id (see asset_version)."""
+ 129|     with open(os.path.join(BASE_DIR, "static", "index.html"), encoding="utf-8") as f:
+ 130|         html = f.read()
+ 131|     resp = make_response(render_template_string(html, v=ASSET_VERSION))
+ 132|     resp.headers["Cache-Control"] = "no-store"
+ 133|     return resp
+ 134| 
+ 135| 
+ 136| @app.route("/methodology")
+ 137| def methodology():
+ 138|     """Render the index methodology (source: docs/methodology.md)."""
+ 139|     with open(os.path.join(BASE_DIR, "static", "methodology.html"), encoding="utf-8") as f:
+ 140|         return render_template_string(f.read())
+ 141| 
+ 142| 
+ 143| @app.route("/api/items")
+ 144| @cache.cached(query_string=True)
+ 145| def api_items():
+ 146|     con = db.connect()
+ 147|     rows = db.get_items(con)
+ 148|     con.close()
+ 149|     return jsonify(
+ 150|         [
+ 151|             {"id": r["id"], "name": r["name"], "category": r["category"], "unit": r["unit"]}
+ 152|             for r in rows
+ 153|         ]
+ 154|     )
+ 155| 
+ 156| 
+ 157| def _parse_window():
+ 158|     start = request.args.get("start", DEFAULT_START) or ""
+ 159|     end = request.args.get("end") or ""
+ 160|     items_arg = request.args.get("items", "")
+ 161|     ids = None
+ 162|     if items_arg.strip():
+ 163|         ids = [int(x) for x in items_arg.split(",") if x.strip().isdigit()]
+ 164|     return start, end, ids
+ 165| 
+ 166| 
+ 167| def _series_between(start, end, ids, status=db.STATUS_APPROVED):
+ 168|     con = db.connect()
+ 169|     if ids is None:
+ 170|         ids = [r["id"] for r in db.get_items(con)]
+ 171|     ph = ",".join("?" * len(ids))
+ 172|     q = (
+ 173|         "SELECT i.name AS name, p.date AS date, p.price AS price "
+ 174|         "FROM prices p JOIN items i ON i.id = p.item_id "
+ 175|         f"WHERE p.status = ? AND p.item_id IN ({ph})"
+ 176|     )
+ 177|     params = [status, *ids]
+ 178|     if start:
+ 179|         q += " AND p.date >= ?"
+ 180|         params.append(start)
+ 181|     if end:
+ 182|         q += " AND p.date <= ?"
+ 183|         params.append(end)
+ 184|     q += " ORDER BY p.date"
+ 185|     rows = con.execute(q, params).fetchall()
+ 186|     con.close()
+ 187|     return rows
+ 188| 
+ 189| 
+ 190| @app.route("/api/series")
+ 191| @cache.cached(query_string=True)
+ 192| def api_series():
+ 193|     start, end, ids = _parse_window()
+ 194|     rows = _series_between(start, end, ids)
+ 195|     return jsonify([{"name": r["name"], "date": r["date"], "price": r["price"]} for r in rows])
+ 196| 
+ 197| 
+ 198| @app.route("/api/index")
+ 199| @cache.cached(query_string=True)
+ 200| def api_index():
+ 201|     """Equal-weight basket cost index, normalised to 100 on the window start."""
+ 202|     start, end, ids = _parse_window()
+ 203|     rows = _series_between(start, end, ids)
+ 204|     sums = {}
+ 205|     for r in rows:
+ 206|         sums[r["date"]] = sums.get(r["date"], 0.0) + r["price"]
+ 207|     dates = sorted(sums)
+ 208|     if not dates:
+ 209|         return jsonify([])
+ 210|     base = sums[dates[0]]
+ 211|     return jsonify([{"date": d, "index": round(sums[d] / base * 100, 2)} for d in dates])
+ 212| 
+ 213| 
+ 214| @app.route("/api/metrics")
+ 215| @cache.cached(query_string=True)
+ 216| def api_metrics():
+ 217|     """Summary stats for the selected window (drives the dashboard cards)."""
+ 218|     start, end, ids = _parse_window()
+ 219|     rows = _series_between(start, end, ids)
+ 220|     if not rows:
+ 221|         return jsonify({"count": 0, "weeks": 0})
+ 222|     by = {}
+ 223|     for r in rows:
+ 224|         by.setdefault(r["name"], []).append(r["price"])
+ 225|     names = list(by)
+ 226|     first_tot = sum(v[0] for v in by.values())
+ 227|     last_tot = sum(v[-1] for v in by.values())
+ 228|     basket_pct = (last_tot - first_tot) / first_tot * 100 if first_tot else 0.0
+ 229| 
+ 230|     stats = []
+ 231|     for name, pxs in by.items():
+ 232|         if len(pxs) >= 2:
+ 233|             stats.append((name, (pxs[-1] - pxs[0]) / pxs[0] * 100))
+ 234|     riser = max(stats, key=lambda t: t[1]) if stats else None
+ 235|     faller = min(stats, key=lambda t: t[1]) if stats else None
+ 236|     dates = sorted({r["date"] for r in rows})
+ 237|     return jsonify(
+ 238|         {
+ 239|             "count": len(names),
+ 240|             "weeks": len(dates),
+ 241|             "first_date": dates[0],
+ 242|             "last_date": dates[-1],
+ 243|             "basket_pct": round(basket_pct, 2),
+ 244|             "start_total": round(first_tot, 2),
+ 245|             "end_total": round(last_tot, 2),
+ 246|             "biggest_riser": {"name": riser[0], "pct": round(riser[1], 2)} if riser else None,
+ 247|             "biggest_faller": {"name": faller[0], "pct": round(faller[1], 2)} if faller else None,
+ 248|         }
+ 249|     )
+ 250| 
+ 251| 
+ 252| @app.route("/api/pivot")
+ 253| @cache.cached(query_string=True)
+ 254| def api_pivot():
+ 255|     """Item x date matrix + equal-weight basket index for the window."""
+ 256|     start, end, ids = _parse_window()
+ 257|     con = db.connect()
+ 258|     if ids is None:
+ 259|         ids = [r["id"] for r in db.get_items(con)]
+ 260|     ph = ",".join("?" * len(ids))
+ 261|     q = (
+ 262|         "SELECT i.name AS name, i.category AS category, i.unit AS unit, "
+ 263|         "       p.date AS date, p.price AS price "
+ 264|         "FROM prices p JOIN items i ON i.id = p.item_id "
+ 265|         f"WHERE p.item_id IN ({ph})"
+ 266|     )
+ 267|     params = list(ids)
+ 268|     if start:
+ 269|         q += " AND p.date >= ?"
+ 270|         params.append(start)
+ 271|     if end:
+ 272|         q += " AND p.date <= ?"
+ 273|         params.append(end)
+ 274|     q += " ORDER BY p.date"
+ 275|     rows = con.execute(q, params).fetchall()
+ 276|     con.close()
+ 277| 
+ 278|     dates, seen, by = [], {}, {}
+ 279|     for r in rows:
+ 280|         if r["date"] not in seen:
+ 281|             seen[r["date"]] = 1
+ 282|             dates.append(r["date"])
+ 283|         by.setdefault(r["name"], {"category": r["category"], "unit": r["unit"], "prices": []})[
+ 284|             "prices"
+ 285|         ].append(r["price"])
+ 286| 
+ 287|     items_out = []
+ 288|     for name, d in by.items():
+ 289|         px = d["prices"]
+ 290|         first, last = px[0], px[-1]
+ 291|         items_out.append(
+ 292|             {
+ 293|                 "name": name,
+ 294|                 "category": d["category"],
+ 295|                 "unit": d["unit"],
+ 296|                 "first": first,
+ 297|                 "last": last,
+ 298|                 "pct": round((last - first) / first * 100, 2) if first else 0.0,
+ 299|                 "prices": px,
+ 300|             }
+ 301|         )
+ 302| 
+ 303|     index = []
+ 304|     if dates and by:
+ 305|         total0 = sum(items_out[i]["prices"][0] for i in range(len(items_out)))
+ 306|         for i in range(len(dates)):
+ 307|             total = sum(items_out[j]["prices"][i] for j in range(len(items_out)))
+ 308|             index.append(round(total / total0 * 100, 2))
+ 309| 
+ 310|     return jsonify({"dates": dates, "index": index, "items": items_out})
+ 311| 
+ 312| 
+ 313| @app.route("/api/inflation")
+ 314| @cache.cached(query_string=True)
+ 315| def api_inflation():
+ 316|     """Headline inflation stats for the window (annualised, weekly, YoY)."""
+ 317|     start, end, ids = _parse_window()
+ 318|     rows = _series_between(start, end, ids)
+ 319|     if not rows:
+ 320|         return jsonify({"weeks": 0})
+ 321|     sums = {}
+ 322|     for r in rows:
+ 323|         sums[r["date"]] = sums.get(r["date"], 0.0) + r["price"]
+ 324|     dates = sorted(sums)
+ 325|     base = sums[dates[0]]
+ 326|     last_tot = sums[dates[-1]]
+ 327|     basket_pct = (last_tot - base) / base * 100
+ 328|     days = (len(dates) - 1) * 7
+ 329|     annualized = ((last_tot / base) ** (365.0 / days) - 1) * 100 if days > 0 else 0.0
+ 330|     avg_weekly = ((last_tot / base) ** (1.0 / max(1, len(dates) - 1)) - 1) * 100
+ 331| 
+ 332|     from datetime import date as _date
+ 333|     from datetime import timedelta
+ 334| 
+ 335|     last_d = _date.fromisoformat(dates[-1])
+ 336|     target = last_d - timedelta(days=364)
+ 337|     yoy = None
+ 338|     for dt in dates:
+ 339|         if _date.fromisoformat(dt) >= target:
+ 340|             yoy = (last_tot / sums[dt] - 1) * 100
+ 341|             break
+ 342|     return jsonify(
+ 343|         {
+ 344|             "weeks": len(dates),
+ 345|             "first_date": dates[0],
+ 346|             "last_date": dates[-1],
+ 347|             "basket_pct": round(basket_pct, 2),
+ 348|             "annualized_pct": round(annualized, 2),
+ 349|             "avg_weekly_pct": round(avg_weekly, 2),
+ 350|             "yoy_pct": round(yoy, 2) if yoy is not None else None,
+ 351|         }
+ 352|     )
+ 353| 
+ 354| 
+ 355| @app.route("/api/series.csv")
+ 356| def api_series_csv():
+ 357|     """Download the current view as CSV."""
+ 358|     import csv as _csv
+ 359|     import io
+ 360| 
+ 361|     from flask import Response
+ 362| 
+ 363|     start, end, ids = _parse_window()
+ 364|     rows = _series_between(start, end, ids)
+ 365|     buf = io.StringIO()
+ 366|     writer = _csv.writer(buf)
+ 367|     writer.writerow(["item", "date", "price"])
+ 368|     for r in rows:
+ 369|         writer.writerow([r["name"], r["date"], r["price"]])
+ 370|     return Response(
+ 371|         buf.getvalue(),
+ 372|         mimetype="text/csv",
+ 373|         headers={"Content-Disposition": "attachment; filename=prices.csv"},
+ 374|     )
+ 375| 
+ 376| 
+ 377| @app.route("/api/alerts")
+ 378| @cache.cached(query_string=True)
+ 379| def api_alerts():
+ 380|     start, end, _ = _parse_window()
+ 381|     threshold = float(request.args.get("threshold", 5.0))
+ 382|     con = db.connect()
+ 383|     rows = latest_alerts(con, threshold=threshold, start=start, end=end)
+ 384|     con.close()
+ 385|     return jsonify(
+ 386|         [
+ 387|             {
+ 388|                 "name": r["name"],
+ 389|                 "category": r["category"],
+ 390|                 "date": r["date"],
+ 391|                 "price": r["price"],
+ 392|                 "prev_price": r["prev_price"],
+ 393|                 "pct": r["pct"],
+ 394|             }
+ 395|             for r in rows
+ 396|         ]
+ 397|     )
+ 398| 
+ 399| 
+ 400| @app.route("/api/live")
+ 401| def api_live():
+ 402|     """Cheap freshness snapshot: data revision plus counts.
+ 403| 
+ 404|     Never cached, and far lighter than re-reading /api/metrics, so a browser can
+ 405|     poll it as the fallback when a stream cannot be kept open.
+ 406|     """
+ 407|     return jsonify(live.snapshot())
+ 408| 
+ 409| 
+ 410| @app.route("/api/stream")
+ 411| @limiter.exempt
+ 412| def api_stream():
+ 413|     """Server-Sent Events feed that keeps every open dashboard current.
+ 414| 
+ 415|     Emits ``hello`` on connect, ``update`` the instant the dataset changes
+ 416|     (ingest, approval, or a write by another process), and ``heartbeat`` every
+ 417|     ``live.HEARTBEAT_SECONDS`` so a client can tell a quiet week from a dead
+ 418|     connection. The stream is long-lived, so it is exempt from the request rate
+ 419|     limit - one browser holds exactly one connection.
+ 420|     """
+ 421|     live.start_watcher()
+ 422| 
+ 423|     def frames():
+ 424|         yield "retry: 3000\n\n"
+ 425|         yield live.sse_frame("hello", live.snapshot())
+ 426|         seen = live.tick()
+ 427|         while True:
+ 428|             current = live.wait(seen, live.HEARTBEAT_SECONDS)
+ 429|             changed = current != seen
+ 430|             seen = current
+ 431|             yield live.sse_frame("update" if changed else "heartbeat", live.snapshot())
+ 432| 
+ 433|     resp = Response(frames(), mimetype="text/event-stream")
+ 434|     resp.headers["Cache-Control"] = "no-store"
+ 435|     resp.headers["X-Accel-Buffering"] = "no"  # never buffer behind a proxy
+ 436|     resp.headers["Connection"] = "keep-alive"
+ 437|     return resp
+ 438| 
+ 439| 
+ 440| @app.route("/ingest/next", methods=["POST"])
+ 441| @limiter.limit(write_limit)
+ 442| def run_job():
+ 443|     from datetime import date
+ 444| 
+ 445|     import job
+ 446| 
+ 447|     con = db.connect()
+ 448|     when = date.today()
+ 449|     if request.is_json and request.get_json(silent=True).get("date"):
+ 450|         when = date.fromisoformat(request.get_json()["date"])
+ 451|     auto_approve = request.get_json(silent=True) is None or bool(
+ 452|         request.get_json(silent=True).get("auto_approve", True)
+ 453|     )
+ 454|     n, snap, counts = job.add_next_week(con, when, auto_approve=auto_approve)
+ 455|     con.close()
+ 456|     cache.clear()  # data changed -> invalidate cached API responses
+ 457|     live.bump("ingest run")  # and wake every open dashboard stream
+ 458|     logger.info("ingest run: %s", counts)
+ 459|     return jsonify({"inserted": n, "for_week": snap.isoformat(), "counts": counts})
+ 460| 
+ 461| 
+ 462| @app.route("/api/admin/pending")
+ 463| def admin_pending():
+ 464|     con = db.connect()
+ 465|     rows = db.pending_points(con)
+ 466|     con.close()
+ 467|     return jsonify([dict(r) for r in rows])
+ 468| 
+ 469| 
+ 470| @app.route("/api/admin/approve", methods=["POST"])
+ 471| @limiter.limit(write_limit)
+ 472| def admin_approve():
+ 473|     """Approve pending price points: {"ids": [..]} or {"all": true}."""
+ 474|     payload = request.get_json(silent=True) or {}
+ 475|     con = db.connect()
+ 476|     if payload.get("all"):
+ 477|         n = con.execute(
+ 478|             "UPDATE prices SET status = ?, review_note = 'approved " "by admin' WHERE status = ?",
+ 479|             (db.STATUS_APPROVED, db.STATUS_PENDING),
+ 480|         ).rowcount
+ 481|     else:
+ 482|         ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
+ 483|         n = 0
+ 484|         for pid in ids:
+ 485|             n += con.execute(
+ 486|                 "UPDATE prices SET status = ?, "
+ 487|                 "review_note = 'approved by admin' "
+ 488|                 "WHERE id = ? AND status = ?",
+ 489|                 (db.STATUS_APPROVED, pid, db.STATUS_PENDING),
+ 490|             ).rowcount
+ 491|     con.commit()
+ 492|     con.close()
+ 493|     if n:
+ 494|         cache.clear()
+ 495|         live.bump("pending points approved")
+ 496|     logger.info("approved %s pending point(s)", n)
+ 497|     return jsonify({"approved": n})
+ 498| 
+ 499| 
+ 500| @app.route("/api/admin/reject", methods=["POST"])
+ 501| @limiter.limit(write_limit)
+ 502| def admin_reject():
+ 503|     """Reject pending price points so they never enter the index."""
+ 504|     payload = request.get_json(silent=True) or {}
+ 505|     con = db.connect()
+ 506|     if payload.get("all"):
+ 507|         n = con.execute(
+ 508|             "UPDATE prices SET status = ?, review_note = 'rejected " "by admin' WHERE status = ?",
+ 509|             (db.STATUS_REJECTED, db.STATUS_PENDING),
+ 510|         ).rowcount
+ 511|     else:
+ 512|         ids = [int(x) for x in payload.get("ids", []) if str(x).isdigit()]
+ 513|         n = 0
+ 514|         for pid in ids:
+ 515|             n += con.execute(
+ 516|                 "UPDATE prices SET status = ?, "
+ 517|                 "review_note = 'rejected by admin' "
+ 518|                 "WHERE id = ? AND status = ?",
+ 519|                 (db.STATUS_REJECTED, pid, db.STATUS_PENDING),
+ 520|             ).rowcount
+ 521|     con.commit()
+ 522|     con.close()
+ 523|     cache.clear()
+ 524|     if n:
+ 525|         live.bump("pending points rejected")
+ 526|     logger.info("rejected %s pending point(s)", n)
+ 527|     return jsonify({"rejected": n})
+ 528| 
+ 529| 
+ 530| if __name__ == "__main__":
+ 531|     # Debug mode is opt-in (FLASK_DEBUG=1); never on by default.
+ 532|     app.run(host="0.0.0.0", port=settings.port, debug=os.environ.get("FLASK_DEBUG") == "1")
