@@ -24,6 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   exits non-zero and lists failures, supports `--token`/`$ADMIN_TOKEN`,
   `--no-write` and `--wait` for cold instances. Exposed as
   `make smoke-prod URL=...`.
+- **Front-end logic tests** (`tests/test_js_helpers.js`, run with `node`): 50
+  assertions over the pure helpers that drive the intelligence layer —
+  category aggregation, top movers (ordering, no riser/faller crossover),
+  the rules-based narrative's exact numbers, sparkline geometry and colour,
+  panel edge cases (empty window, all-rise window) and HTML escaping of
+  untrusted item names. Wired into CI (a new step) and `make js-test` /
+  `make qa`. Verified non-vacuous: a deliberately mutated helper fails the
+  suite.
 - `?nolive=1` static render mode (live pill shows "Live off"): lets `shot.py`
   take dashboard screenshots — an always-open SSE stream kept headless Chrome
   from ever reaching "network idle", so `--screenshot` hung and `shot.py`

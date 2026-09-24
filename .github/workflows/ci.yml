@@ -27,6 +27,8 @@ jobs:
           black --check .
       - name: Type check (mypy)
         run: mypy
+      - name: Front-end logic tests (node)
+        run: node tests/test_js_helpers.js
       - name: Seed + unit tests (with coverage)
         run: |
           python seed.py

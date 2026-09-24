@@ -14,7 +14,7 @@ endif
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup seed dev once test test-cov web-test smoke-prod lint format type qa docker-up docker-down clean
+.PHONY: help setup seed dev once test test-cov js-test web-test smoke-prod lint format type qa docker-up docker-down clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[33m%-10s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,9 @@ test: ## Run the pytest suite
 test-cov: ## Run pytest with coverage (fails under 80%)
 	$(PY) -m pytest --cov --cov-fail-under=80
 
+js-test: ## Front-end logic tests for static/helpers.js (needs node)
+	node tests/test_js_helpers.js
+
 web-test: ## Boot the real server and check every route
 	$(PY) test_web.py
 
@@ -55,8 +58,8 @@ format: ## Format with black
 type: ## mypy type check
 	$(PY) -m mypy
 
-qa: ## Everything CI runs: lint, type, coverage, live web checks
-	$(PY) -m ruff check . $(SEP) $(PY) -m mypy $(SEP) $(PY) -m pytest --cov --cov-fail-under=80 $(SEP) $(PY) test_web.py
+qa: ## Everything CI runs: lint, type, front-end tests, coverage, live web checks
+	$(PY) -m ruff check . $(SEP) $(PY) -m mypy $(SEP) node tests/test_js_helpers.js $(SEP) $(PY) -m pytest --cov --cov-fail-under=80 $(SEP) $(PY) test_web.py
 
 docker-up: ## Start app + Postgres + Redis + Caddy (needs Docker)
 	docker compose up --build -d
