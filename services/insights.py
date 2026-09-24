@@ -290,13 +290,12 @@ def for_item(con, item: dict, start: str = "", end: str = "", threshold: float =
 
 def items_without_data(con) -> list:
     """Tracked items that currently have no approved observations at all."""
-    con.execute("SELECT 1")
-    return [
-        i
-        for i in rm.all_items(con)
-        if con.execute(
+    missing = []
+    for item in rm.all_items(con):
+        count = con.execute(
             "SELECT COUNT(*) AS c FROM prices WHERE item_id = ? AND status = ?",
-            (i["id"], db.STATUS_APPROVED),
+            (item["id"], db.STATUS_APPROVED),
         ).fetchone()["c"]
-        == 0
-    ]
+        if count == 0:
+            missing.append(item)
+    return missing

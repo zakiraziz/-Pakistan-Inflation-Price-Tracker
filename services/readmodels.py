@@ -427,6 +427,16 @@ def status_snapshot(con) -> dict:
     }
 
 
+def fmt_money(value) -> str:
+    """Format PKR with thousands separators (value only, no currency symbol)."""
+    if value is None:
+        return "-"
+    try:
+        return f"{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return "-"
+
+
 def freshness_label(age_days, stale_after: int = 30) -> str:
     """Honest wording for the "data updated" badge (never overstates trust)."""
     if age_days is None:
