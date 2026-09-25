@@ -155,3 +155,42 @@ def sparkline(values, width=120, height=28, color="#0072b2", label="trend"):
         f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.6" '
         f'stroke-linejoin="round"></path></svg>'
     )
+
+
+def bars(rows, width=860, row_height=24, label_w=200, value_suffix="%",
+         label="Comparison chart"):
+    """Horizontal bar chart: ``rows`` = [(label, value, color)]."""
+    if not rows:
+        return '<p class="chart-empty">Nothing to compare in this window.</p>'
+    peak = max(abs(v) for _, v, _ in rows) or 1.0
+    height = row_height * len(rows) + 8
+    bar_w = width - label_w - 74
+    parts = [
+        f'<svg class="chart bars" viewBox="0 0 {width} {height}" role="img" '
+        f'aria-label="{html.escape(label)}"><title>{html.escape(label)}</title>'
+    ]
+    for i, (name, value, color) in enumerate(rows):
+        y = i * row_height + 4
+        w = max(2.0, bar_w * abs(value) / peak)
+        parts.append(
+            f'<text x="{label_w - 8}" y="{y + row_height / 2 + 4:.1f}" '
+            f'class="axis bar-label" text-anchor="end">'
+            f"{html.escape(str(name))}</text>"
+        )
+        parts.append(
+            f'<rect x="{label_w}" y="{y + 3:.1f}" width="{w:.1f}" '
+            f'height="{row_height - 8}" rx="3" fill="{color}"></rect>'
+        )
+        parts.append(
+            f'<text x="{label_w + w + 6:.1f}" y="{y + row_height / 2 + 4:.1f}" '
+            f'class="axis bar-value">{value:+,.1f}{value_suffix}</text>'
+        )
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def change_color(value) -> str:
+    """Colour for a signed percentage (rises = warm, falls = cool green)."""
+    if value is None:
+        return "#78877e"
+    return UP if value > 0 else (DOWN if value < 0 else "#78877e")
