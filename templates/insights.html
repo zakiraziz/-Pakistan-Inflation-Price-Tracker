@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  <a href="/insights?threshold={{ threshold }}">Threshold {{ threshold }}%</a>
+  <a href="/insights?threshold=2">2%</a>
+  <a href="/insights?threshold=5">5%</a>
+  <a href="/insights?threshold=10">10%</a>
+  <a href="/data">Raw data</a>
+  <a href="/docs">API</a>
+</div>
+
+<div class="panel">
+  <h2>How to read this page</h2>
+  <p>
+    Each card answers "what changed?" and separates
+    <strong>calculated facts</strong> (straight from the stored observations)
+    from <strong>possible contributing factors</strong> (category-level context,
+    not established by this dataset). No causal claim is made from a price move.
+  </p>
+  <p class="hint">
+    Window: {{ payload.window.start }} → {{ payload.window.end }} ·
+    {{ payload.window.items }} items · {{ payload.window.weeks }} weekly observations ·
+    threshold {{ payload.window.threshold }}%
+  </p>
+</div>
+
+<div class="panel">
+  <h2>Headline</h2>
+  <div class="insight {{ payload.basket.severity }}">
+    <h3>{{ payload.basket.title }}</h3>
+    <span class="label">Calculated facts</span>
+    <ul>{% for fact in payload.basket.facts %}<li>{{ fact }}</li>{% endfor %}</ul>
+    {% if payload.basket.notes %}
+      <span class="label">What this means</span>
+      <ul>{% for note in payload.basket.notes %}<li class="note">{{ note }}</li>{% endfor %}</ul>
+    {% endif %}
+    <div class="actions">
+      <a class="btn-sm" href="/methodology">Methodology</a>
+      <a class="btn-sm" href="/data">Basket index data</a>
+    </div>
+  </div>
+</div>
+
+{% if payload.breaches %}
+<div class="panel">
+  <h2>Threshold breaches</h2>
+  <p class="hint">Moves at or beyond {{ threshold }}% in a single week - a signal to look, not proof of a cause.</p>
+  {% for card in payload.breaches %}
+    <div class="insight {{ card.severity }}">
+      <h3>{{ card.title }} <span class="badge {{ 'up' if card.direction == 'up' else 'down' }}">{{ '%+.2f'|format(card.pct) }}%</span></h3>
+      <span class="label">Calculated facts</span>
+      <ul>{% for fact in card.facts %}<li>{{ fact }}</li>{% endfor %}</ul>
+      {% if card.context %}
+        <span class="label">Possible contributing factors</span>
+        <div class="context"><ul>{% for factor in card.context %}<li>{{ factor }}</li>{% endfor %}</ul></div>
+      {% endif %}
+      <div class="actions">
+        <a class="btn-sm primary" href="{{ card.link }}">View trend</a>
+        <a class="btn-sm" href="/compare?items={{ card.slug }}">Compare</a>
+        <a class="btn-sm" href="/alerts">All alerts</a>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Biggest increases</h2>
+    <p class="hint">Largest percentage change over the window.</p>
+    {% for card in payload.risers %}
+      <div class="insight {{ card.severity }}">
+        <h3>{{ card.item }} <span class="badge up">{{ '%+.1f'|format(card.pct) }}%</span></h3>
+        <ul>{% for fact in card.facts[:4] %}<li>{{ fact }}</li>{% endfor %}</ul>
+        <div class="actions"><a class="btn-sm primary" href="{{ card.link }}">View trend</a></div>
+      </div>
+    {% else %}
+      <p class="empty">No item rose in this window.</p>
+    {% endfor %}
+  </div>
+
+  <div class="panel">
+    <h2>Biggest decreases</h2>
+    <p class="hint">Largest percentage change over the window.</p>
+    {% for card in payload.fallers %}
+      <div class="insight {{ card.severity }}">
+        <h3>{{ card.item }} <span class="badge down">{{ '%+.1f'|format(card.pct) }}%</span></h3>
+        <ul>{% for fact in card.facts[:4] %}<li>{{ fact }}</li>{% endfor %}</ul>
+        <div class="actions"><a class="btn-sm primary" href="{{ card.link }}">View trend</a></div>
+      </div>
+    {% else %}
+      <p class="empty">No item fell in this window.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Unusual moves</h2>
+  <p class="hint">
+    Flagged when this week's move is more than two standard deviations from that
+    item's own typical weekly move (|z| &ge; 2).
+  </p>
+  {% for card in payload.unusual %}
+    <div class="insight {{ card.severity }}">
+      <h3>{{ card.item }} <span class="badge {{ 'up' if card.direction == 'up' else 'down' }}">{{ '%+.2f'|format(card.pct) }}%</span></h3>
+      <span class="label">Calculated facts</span>
+      <ul>{% for fact in card.facts %}<li>{{ fact }}</li>{% endfor %}</ul>
+      {% if card.notes %}<p class="note">{{ card.notes[0] }}</p>{% endif %}
+      <div class="actions"><a class="btn-sm" href="{{ card.link }}">View history</a></div>
+    </div>
+  {% else %}
+    <p class="empty">No item moved unusually far from its own recent pattern in this window.</p>
+  {% endfor %}
+</div>
+
+<p class="hint">{{ payload.method }}</p>
+
+{% endblock %}

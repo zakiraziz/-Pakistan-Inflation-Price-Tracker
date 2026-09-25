@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  <a href="/healthz">/healthz</a>
+  <a href="/readyz">/readyz</a>
+  <a href="/api/status">/api/status (JSON)</a>
+  <a href="/api/version">/api/version</a>
+  <a href="/docs">API reference</a>
+</div>
+
+<div class="grid4">
+  <div class="stat">
+    <span class="stat-label">Freshness</span>
+    <span class="stat-value">{{ snapshot.freshness }}</span>
+    <span class="stat-sub">
+      {% if snapshot.last_date %}latest observation {{ snapshot.last_date }}{% else %}no approved data{% endif %}
+    </span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Coverage</span>
+    <span class="stat-value">{{ snapshot.weeks }}</span>
+    <span class="stat-sub">weeks ({{ snapshot.first_date or '—' }} → {{ snapshot.last_date or '—' }})</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Approved points</span>
+    <span class="stat-value">{{ snapshot.approved_points }}</span>
+    <span class="stat-sub">{{ snapshot.items }} items · {{ snapshot.categories|length }} categories</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Review queue</span>
+    <span class="stat-value">{{ snapshot.pending_points }}</span>
+    <span class="stat-sub">{{ snapshot.rejected_points }} rejected historically</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Approval state</h2>
+    <p class="hint">
+      Only <code>approved</code> rows are ever served by the API or counted in
+      the index. Pending rows wait for a human decision.
+    </p>
+    <dl class="kv">
+      <dt>approved</dt><dd>{{ snapshot.by_status.get('approved', 0) }}</dd>
+      <dt>pending</dt><dd>{{ snapshot.by_status.get('pending', 0) }}</dd>
+      <dt>rejected</dt><dd>{{ snapshot.by_status.get('rejected', 0) }}</dd>
+      <dt>last collected</dt><dd class="mono">{{ snapshot.latest_collected or '—' }}</dd>
+      <dt>age of latest week</dt><dd>{{ snapshot.age_days if snapshot.age_days is not none else '—' }} day(s)</dd>
+    </dl>
+    <div class="actions">
+      <a class="btn-sm" href="/admin/review">Open review queue</a>
+      <a class="btn-sm" href="/data">Data &amp; provenance</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Categories tracked</h2>
+    <p class="hint">Grouping used for the "possible contributing factors" context on the insights page.</p>
+    <ul>
+      {% for c in snapshot.categories %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Provenance</h2>
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Source</th><th>Method</th><th class="r">Points</th><th>First</th><th>Last</th></tr></thead>
+    <tbody>
+    {% for p in provenance %}
+      <tr>
+        <td class="mono">{{ p.source }}</td>
+        <td class="mono">{{ p.method }}</td>
+        <td class="r">{{ p.points }}</td>
+        <td>{{ p.first_date }}</td>
+        <td>{{ p.last_date }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">No approved data yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="panel">
+  <h2>Recent pipeline runs</h2>
+  <ul class="timeline">
+    {% for run in ingestions %}
+      <li>
+        <strong>{{ run.ran_at }}</strong> · {{ run.source }} / {{ run.method }}<br>
+        <span class="stat-sub">
+          target {{ run.target_date or '—' }} · {{ run.points_total }} fetched ·
+          {{ run.points_approved }} approved · {{ run.points_pending }} pending ·
+          {{ run.points_rejected }} rejected
+        </span>
+      </li>
+    {% else %}
+      <li>No runs recorded yet. Run <code>python seed.py</code> then
+        <code>python job.py</code> (or POST /ingest/next).</li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

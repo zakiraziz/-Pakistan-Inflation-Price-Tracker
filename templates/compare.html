@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+
+<form class="panel" method="get" action="/compare">
+  <h2>Choose what to compare</h2>
+  <p class="hint">
+    Two periods over the same basket. Every row below shows the change in
+    period A, the change in period B, and the difference between them - a
+    positive difference means the move is getting stronger.
+  </p>
+  <div class="page-filters">
+    <div class="field">
+      <label for="a_start">Period A from</label>
+      <input type="date" id="a_start" name="a_start" value="{{ a.start }}" />
+    </div>
+    <div class="field">
+      <label for="a_end">Period A to</label>
+      <input type="date" id="a_end" name="a_end" value="{{ a.end }}" />
+    </div>
+    <div class="field">
+      <label for="b_start">Period B from</label>
+      <input type="date" id="b_start" name="b_start" value="{{ b.start }}" />
+    </div>
+    <div class="field">
+      <label for="b_end">Period B to</label>
+      <input type="date" id="b_end" name="b_end" value="{{ b.end }}" />
+    </div>
+    <div class="field">
+      <label for="items">Items (optional)</label>
+      <input type="text" id="items" name="items" value="{{ selected|join(',') }}" placeholder="onion,potato" />
+    </div>
+    <div class="field">
+      <label aria-hidden="true">&nbsp;</label>
+      <button class="btn-sm primary" type="submit">Compare</button>
+    </div>
+  </div>
+  <fieldset class="itempick" style="border:0;padding:0;margin-top:var(--s4)">
+    <legend class="hint" style="padding:0">Quick item picker (appends to the field above)</legend>
+    {% for i in items %}
+      <label>
+        <input type="checkbox" name="_pick" value="{{ i.slug }}"
+               {% if i.slug in selected %}checked{% endif %} disabled />
+        {{ i.name }}
+      </label>
+    {% endfor %}
+  </fieldset>
+</form>
+
+<div class="panel">
+  <h2>Basket index, period A vs period B</h2>
+  <p class="hint">Both periods are normalised to 100 at their own start, so the shapes can be compared directly.</p>
+  {{ chart_html|safe }}
+</div>
+
+<div class="panel">
+  <h2>Change in the change</h2>
+  <p class="hint">Percentage points: period B minus period A, per item.</p>
+  {{ bars_html|safe }}
+</div>
+
+<div class="panel">
+  <h2>Item by item</h2>
+  <p class="hint">A: {{ a.start }} → {{ a.end }} · B: {{ b.start }} → {{ b.end }}</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col">Unit</th>
+          <th scope="col" class="r">A: change</th>
+          <th scope="col" class="r">B: change</th>
+          <th scope="col" class="r">B − A</th>
+          <th scope="col" class="r">A: latest</th>
+          <th scope="col" class="r">B: latest</th>
+          <th scope="col"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td><a href="/item/{{ r.slug }}">{{ r.name }}</a><br><span class="stat-sub">{{ r.category }}</span></td>
+          <td>{{ r.unit }}</td>
+          <td class="r">{{ '%+.2f'|format(r.a_pct) if r.a_pct is not none else '—' }}%</td>
+          <td class="r">{{ '%+.2f'|format(r.b_pct) if r.b_pct is not none else '—' }}%</td>
+          <td class="r {{ 'up' if r.delta and r.delta > 0 else ('down' if r.delta and r.delta < 0 else 'flat') }}">
+            <strong>{{ '%+.2f'|format(r.delta) if r.delta is not none else '—' }} pp</strong>
+          </td>
+          <td class="r">{{ 'Rs %.2f'|format(r.a_last) if r.a_last is not none else '—' }}</td>
+          <td class="r">{{ 'Rs %.2f'|format(r.b_last) if r.b_last is not none else '—' }}</td>
+          <td><a class="btn-sm" href="/item/{{ r.slug }}">Detail</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8">No overlapping data in these two periods - widen one of them.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

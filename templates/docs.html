@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  <a href="/api/v1/openapi.json">OpenAPI document (JSON)</a>
+  <a href="/healthz">Health</a>
+  <a href="/methodology">Methodology</a>
+  <a href="/data">Data</a>
+</div>
+
+<div class="panel">
+  <h2>Machine-readable contract</h2>
+  <p>
+    The whole API is described by a single OpenAPI 3.1 document at
+    <a href="/api/v1/openapi.json"><code class="path">/api/v1/openapi.json</code></a>.
+    Every operation below exists both at its canonical path and under
+    <code class="path">/api/v1/…</code>; prefer the versioned paths in clients.
+  </p>
+  <dl class="kv">
+    <dt>OpenAPI</dt><dd>3.1.0</dd>
+    <dt>API version</dt><dd>{{ api_version }}</dd>
+    <dt>Auth</dt><dd>public reads · admin writes need <code>X-Admin-Token</code> (or loopback in local dev)</dd>
+    <dt>Rate limits</dt><dd>see the <code>X-RateLimit-*</code> response headers</dd>
+    <dt>Errors</dt><dd>JSON envelope <code>{"error": {"code": …, "message": …}}</code> - never a stack trace</dd>
+  </dl>
+</div>
+
+<div class="panel">
+  <h2>Pages</h2>
+  <p class="hint">The human-facing surface, all rendered on the server.</p>
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th scope="col">Path</th><th scope="col">Page</th><th scope="col">What it does</th></tr></thead>
+    <tbody>
+    {% for path, name, what in pages %}
+      <tr>
+        <td class="mono"><a href="{{ path.replace('<slug>', 'onion') }}">{{ path }}</a></td>
+        <td>{{ name }}</td>
+        <td>{{ what }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+{% for group, endpoints in groups %}
+  <div class="panel">
+    <h2>{{ group }}</h2>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">Method</th>
+            <th scope="col">Path</th>
+            <th scope="col">Summary</th>
+            <th scope="col">Parameters</th>
+            <th scope="col">Access</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for e in endpoints %}
+          <tr>
+            <td><span class="badge {{ 'get' if e.method == 'GET' else 'post' }}">{{ e.method }}</span></td>
+            <td class="mono"><a href="{{ e.path.replace('{slug}', 'onion') }}">{{ e.path }}</a></td>
+            <td>
+              <strong>{{ e.summary }}</strong><br>
+              <span class="stat-sub">{{ e.description }}</span><br>
+              <code class="path">{{ examples.get(e.path, '') }}</code>
+            </td>
+            <td>
+              {% for p in e.get('params', []) %}
+                <code>{{ p.name }}</code>{% if p.get('required') %}<strong>*</strong>{% endif %}{% if not loop.last %} · {% endif %}
+              {% else %}<span class="stat-sub">none</span>{% endfor %}
+            </td>
+            <td><span class="badge {{ 'admin' if e.auth == 'admin' else 'public' }}">{{ e.auth }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endfor %}
+
+<div class="panel">
+  <h2>Every documented path</h2>
+  <p class="hint">A test asserts each of these is actually registered on the app, so the docs cannot drift.</p>
+  <ul>
+    {% for p in spec_paths %}<li><code class="path">{{ p }}</code></li>{% endfor %}
+  </ul>
+</div>
+
+{% endblock %}

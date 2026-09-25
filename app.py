@@ -83,6 +83,7 @@ def asset_version():
 
 
 ASSET_VERSION = asset_version()
+app.config["ASSET_VERSION"] = ASSET_VERSION
 
 
 @app.route("/readyz")
@@ -437,6 +438,169 @@ def api_stream():
     return resp
 
 
+@app.route("/api/insights")
+@cache.cached(query_string=True)
+def api_insights():
+    """Rule-based narratives: what changed, by how much, and where to look.
+
+    Calculated facts are returned separately from 'context' factors so a client
+    can never present a possible explanation as a proven cause.
+    """
+    import services.insights as _insights
+
+    start, end, ids = _parse_window()
+    threshold = float(request.args.get("threshold", 5.0))
+    return jsonify(_insights.build(db.connect(), start, end, ids, threshold))
+
+
+@app.route("/api/items/<slug>")
+@cache.cached(query_string=True)
+def api_item_detail(slug: str):
+    """Everything known about one item: history, statistics, provenance."""
+    import services.insights as _insights
+    import services.readmodels as rm
+
+    start, end, _ = _parse_window()
+    con = db.connect()
+    item = rm.item_by_slug(con, slug)
+    if not item:
+        con.close()
+        return jsonify({"error": {"code": 404, "message": "Unknown item"}}), 404
+    history = rm.series_of(con, item["id"], start, end)
+    prices = [row["price"] for row in history]
+    stats = rm.stats(prices) if prices else None
+    views = rm.item_views(db.connect(), start, end)
+    mine = next((v for v in views if v["slug"] == slug), None)
+    provenance = {}
+    for row in history:
+        key = f"{row['source']}/{row['method']}"
+        entry = provenance.setdefault(
+            key, {"source": row["source"], "method": row["method"], "points": 0,
+                  "first": row["date"], "last": row["date"]}
+        )
+        entry["points"] += 1
+        entry["first"] = min(entry["first"], row["date"])
+        entry["last"] = max(entry["last"], row["date"])
+    return jsonify(
+        {
+            "item": item,
+            "window": {"start": start, "end": end or (history[-1]["date"] if history else "")},
+            "statistics": stats,
+            "contribution_pct": mine["contribution_pct"] if mine else None,
+            "history": [
+                {"date": r["date"], "price": r["price"], "source": r["source"],
+                 "method": r["method"], "collected_at": r["collected_at"]}
+                for r in history
+            ],
+            "provenance": list(provenance.values()),
+            "insight": _insights.for_item(db.connect(), item, start, end),
+        }
+    )
+
+
+@app.route("/api/compare")
+@cache.cached(query_string=True)
+def api_compare():
+    """Compare the same items across two windows (acceleration or reversal)."""
+    import services.readmodels as rm
+
+    a = {"start": request.args.get("a_start", ""), "end": request.args.get("a_end", "")}
+    b = {"start": request.args.get("b_start", ""), "end": request.args.get("b_end", "")}
+    if not a["start"] or not b["start"]:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": 400,
+                        "message": "a_start and b_start are required",
+                        "hint": "Example: /api/compare?a_start=2025-01-04&b_start=2026-01-03",
+                    }
+                }
+            ),
+            400,
+        )
+    raw = request.args.get("items", "")
+    ids = [int(x) for x in raw.split(",") if x.strip().isdigit()] or None
+    rows = rm.compare_windows(a, b, ids)
+    return jsonify({"a": a, "b": b, "rows": rows})
+
+
+@app.route("/api/status")
+@cache.cached(query_string=True)
+def api_status():
+    """Coverage, freshness, approval counts, provenance and the audit log."""
+    import services.readmodels as rm
+
+    snapshot = rm.status_snapshot(db.connect())
+    return jsonify(
+        {
+            "status": snapshot,
+            "provenance": rm.provenance(db.connect()),
+            "ingestions": rm.ingestions(db.connect(), 20),
+        }
+    )
+
+
+@app.route("/api/export.json")
+@cache.cached(query_string=True)
+def api_export():
+    """Bulk open-data export: self-describing, one request, no pagination."""
+    import services.readmodels as rm
+
+    start, end, ids = _parse_window()
+    con = db.connect()
+    items = rm.all_items(con)
+    con.close()
+    rows = rm.series(db.connect(), start, end, ids)
+    return jsonify(
+        {
+            "meta": {
+                "dataset": "Pakistan Inflation / Price Tracker",
+                "window": {"start": start, "end": end},
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "items": len(items),
+                "observations": len(rows),
+                "license": "MIT",
+                "note": (
+                    "Approved observations only. Every point carries its "
+                    "source, method and collection timestamp."
+                ),
+            },
+            "items": items,
+            "observations": [
+                {"item": r["name"], "category": r["category"], "unit": r["unit"],
+                 "date": r["date"], "price": r["price"]}
+                for r in rows
+            ],
+            "basket_index": rm.basket_index(rows),
+            "provenance": rm.provenance(db.connect()),
+        }
+    )
+
+
+@app.route("/api/alerts.csv")
+def api_alerts_csv():
+    """Download the alert list as CSV (the same rows /api/alerts returns)."""
+    import csv as _csv
+    import io
+
+    start, end, _ = _parse_window()
+    threshold = float(request.args.get("threshold", 5.0))
+    con = db.connect()
+    rows = latest_alerts(con, threshold=threshold, start=start, end=end)
+    con.close()
+    buf = io.StringIO()
+    writer = _csv.writer(buf)
+    writer.writerow(["item", "category", "date", "previous_price", "price", "pct_change"])
+    for r in rows:
+        writer.writerow([r["name"], r["category"], r["date"], r["prev_price"], r["price"], r["pct"]])
+    return Response(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=alerts.csv"},
+    )
+
+
 @app.route("/ingest/next", methods=["POST"])
 @limiter.limit(write_limit)
 def run_job():
@@ -525,6 +689,18 @@ def admin_reject():
         live.bump("pending points rejected")
     logger.info("rejected %s pending point(s)", n)
     return jsonify({"rejected": n})
+
+
+# --- server-rendered pages + API versioning ---------------------------------
+# Imported at the bottom on purpose: the page routes read from the same data
+# layer as the API, and the versioning pass must see every /api/ rule that
+# exists, so both are attached once the app is fully built.
+from web.pages import bp as pages_bp  # noqa: E402  (must follow app setup)
+from core.versioning import install as install_versions  # noqa: E402
+
+app.register_blueprint(pages_bp)
+ALIAS_COUNT = install_versions(app)
+logger.info("registered %s page(s) and %s API alias(es)", len(pages_bp.deferred_functions), ALIAS_COUNT)
 
 
 if __name__ == "__main__":

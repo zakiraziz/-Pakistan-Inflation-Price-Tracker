@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  {% for t in [2, 5, 10, 15] %}
+    <a href="/alerts?threshold={{ t }}"{% if threshold == t %} aria-current="page"{% endif %}>{{ t }}%</a>
+  {% endfor %}
+  <a href="/api/alerts.csv?threshold={{ threshold }}">Download CSV</a>
+  <a href="/api/alerts?threshold={{ threshold }}">JSON</a>
+  <a href="/insights?threshold={{ threshold }}">Insights</a>
+</div>
+
+<div class="panel">
+  <h2>Alerts at {{ threshold }}% or more in one week</h2>
+  <p class="hint">
+    An alert fires when an item's newest weekly observation is at least
+    {{ threshold }}% above the previous one. Each row links to the evidence:
+    the item's own history, statistics and provenance.
+  </p>
+
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="data">
+        <caption>{{ rows|length }} item(s) above threshold, largest jump first</caption>
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col">Category</th>
+            <th scope="col">Week</th>
+            <th scope="col" class="r">Previous</th>
+            <th scope="col" class="r">Now</th>
+            <th scope="col" class="r">Jump</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td><a href="/item/{{ r.slug }}">{{ r.name }}</a></td>
+            <td>{{ r.category }}</td>
+            <td class="mono">{{ r.date }}</td>
+            <td class="r">Rs {{ '%.2f'|format(r.prev_price or 0) }}</td>
+            <td class="r">Rs {{ '%.2f'|format(r.price) }}</td>
+            <td class="r up"><strong>{{ '%+.2f'|format(r.pct) }}%</strong></td>
+            <td>
+              <a class="btn-sm primary" href="/item/{{ r.slug }}">View trend</a>
+              <a class="btn-sm" href="/compare?items={{ r.slug }}">Compare</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>No alerts recorded</h3>
+      <p>
+        Nothing crossed the {{ threshold }}% threshold in the latest week.
+        That itself is information: no single-week jump is currently flagged.
+      </p>
+      <div class="actions">
+        <a class="btn-sm" href="/alerts?threshold=2">Try a 2% threshold</a>
+        <a class="btn-sm" href="/insights">Read the insights instead</a>
+        <a class="btn-sm" href="/data">Check the raw data</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>What an alert does and does not tell you</h2>
+  <ul>
+    <li><strong>Does:</strong> flag a single-week move large enough to be worth a look, and point at the exact observation.</li>
+    <li><strong>Does not:</strong> explain why it moved. Fresh produce legitimately swings with the season, so a 10% onion move is not the same signal as a 10% electricity move.</li>
+    <li>Thresholds are per week. Anything sustained shows up in the trend and volatility columns on the item page.</li>
+  </ul>
+  <div class="actions">
+    <a class="btn-sm" href="/methodology">Methodology</a>
+    <a class="btn-sm" href="/status">Pipeline status</a>
+  </div>
+</div>
+
+{% endblock %}

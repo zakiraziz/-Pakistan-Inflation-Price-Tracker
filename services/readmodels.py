@@ -31,7 +31,13 @@ def slugify(name: str) -> str:
 
 
 def all_items(con):
-    """Every tracked item with its slug, ordered for stable display."""
+    """Every tracked item with its slug, ordered for stable display.
+
+    *Borrows* the connection - the caller closes it. Functions whose name reads
+    as a whole query (``series``, ``series_of``, ``provenance``, ``ingestions``,
+    ``status_snapshot``, ``item_views``) own and close their connection instead,
+    which is stated in their docstrings.
+    """
     return [
         {
             "id": r["id"],
@@ -317,15 +323,19 @@ def top_movers(views, n: int = 5):
     return risers, fallers
 
 
-def compare_windows(con, first: dict, second: dict, ids=None):
-    """Compare the same items across two windows (acceleration vs reversal)."""
+def compare_windows(first: dict, second: dict, ids=None):
+    """Compare the same items across two windows (acceleration vs reversal).
+
+    Opens its own connections (one per window) because the read helpers own and
+    close whatever connection they are handed.
+    """
     a = {
         r["name"]: r
-        for r in item_views(con, first.get("start", ""), first.get("end", ""), ids)
+        for r in item_views(db.connect(), first.get("start", ""), first.get("end", ""), ids)
     }
     b = {
         r["name"]: r
-        for r in item_views(con, second.get("start", ""), second.get("end", ""), ids)
+        for r in item_views(db.connect(), second.get("start", ""), second.get("end", ""), ids)
     }
     names = [n for n in a if n in b] or sorted(set(a) | set(b))
     out = []

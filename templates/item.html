@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if not history %}
+  <div class="empty">
+    <h3>No approved observations for this item in the selected window</h3>
+    <p>
+      {% if available_from %}Data for this item starts on {{ available_from }}.
+      {% else %}This item has no approved observations at all yet.{% endif %}
+      Widen the date range, or check the review queue for held-back points.
+    </p>
+    <div class="actions">
+      <a class="btn-sm primary" href="/item/{{ item.slug }}">Show all available data</a>
+      <a class="btn-sm" href="/admin/review">Review queue</a>
+      <a class="btn-sm" href="/data">Data &amp; provenance</a>
+    </div>
+  </div>
+{% else %}
+
+<div class="pager">
+  <a href="/item/{{ item.slug }}">Whole history</a>
+  <a href="/item/{{ item.slug }}?start={{ window.start }}&amp;end={{ window.end }}">Selected window: {{ window.start }} → {{ window.end }}</a>
+  <a href="/compare?items={{ item.slug }}">Compare periods</a>
+  <a href="/api/items/{{ item.slug }}?start={{ window.start }}&amp;end={{ window.end }}">JSON</a>
+</div>
+
+<div class="grid4">
+  <div class="stat">
+    <span class="stat-label">Current price</span>
+    <span class="stat-value">Rs {{ '%.2f'|format(stats.last) }}</span>
+    <span class="stat-sub">{{ item.unit }} · {{ stats.weeks }} weeks of data</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Change over window</span>
+    <span class="stat-value {{ 'up' if stats.pct > 0 else ('down' if stats.pct < 0 else 'flat') }}">{{ '%+.2f'|format(stats.pct) }}%</span>
+    <span class="stat-sub">from Rs {{ '%.2f'|format(stats.first) }} · trend {{ stats.trend }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Weekly volatility</span>
+    <span class="stat-value">{{ '%.2f'|format(stats.volatility) }}%</span>
+    <span class="stat-sub">Std dev of week-over-week moves</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Contribution to basket</span>
+    <span class="stat-value">{{ '%+.2f'|format(stats.contribution_pct or 0) }} pp</span>
+    <span class="stat-sub">Share of the basket's move this window</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Price history</h2>
+  <p class="hint">
+    Approved weekly observations only. Hover the line to read the series name;
+    the marker at the end is the latest price.
+  </p>
+  {{ chart_html|safe }}
+  <dl class="kv" style="margin-top:var(--s4)">
+    <dt>Minimum</dt><dd>Rs {{ '%.2f'|format(stats.min) }}</dd>
+    <dt>Maximum</dt><dd>Rs {{ '%.2f'|format(stats.max) }}</dd>
+    <dt>Average</dt><dd>Rs {{ '%.2f'|format(stats.mean) }}</dd>
+    <dt>Newest weekly move</dt><dd>{{ '%+.2f'|format(stats.last_change_pct) }}%</dd>
+    <dt>Rising streak</dt><dd>{{ stats.consecutive }} week(s) of increases</dd>
+  </dl>
+</div>
+
+{% if insight %}
+  <div class="panel">
+    <h2>What changed?</h2>
+    <p class="hint">
+      Facts are calculated from the observations above. Possible contributing
+      factors are category-level context and are <strong>not</strong> established
+      by this dataset.
+    </p>
+    {% for card in insight.cards %}
+      <div class="insight {{ card.severity }}">
+        <h3>
+          {{ card.title }}
+          <span class="badge {{ 'up' if card.direction == 'up' else 'down' }}">{{ '%+.2f'|format(card.pct) }}%</span>
+        </h3>
+        <span class="label">Calculated facts</span>
+        <ul>{% for fact in card.facts %}<li>{{ fact }}</li>{% endfor %}</ul>
+        {% if card.notes %}
+          <span class="label">What this means</span>
+          <ul>{% for note in card.notes %}<li class="note">{{ note }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% if card.context %}
+          <span class="label">Possible contributing factors (context, not proven here)</span>
+          <div class="context"><ul>{% for factor in card.context %}<li>{{ factor }}</li>{% endfor %}</ul></div>
+        {% endif %}
+        <div class="actions">
+          <a class="btn-sm primary" href="/compare?items={{ item.slug }}">Compare periods</a>
+          <a class="btn-sm" href="/insights">All insights</a>
+          <a class="btn-sm" href="/alerts?threshold=5">Alerts</a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Provenance</h2>
+    <p class="hint">Where every point came from, and when it was collected.</p>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Source</th><th>Method</th><th class="r">Points</th><th>First</th><th>Last</th><th>Collected</th></tr></thead>
+      <tbody>
+      {% for p in provenance %}
+        <tr>
+          <td class="mono">{{ p.source }}</td>
+          <td class="mono">{{ p.method }}</td>
+          <td class="r">{{ p.points }}</td>
+          <td>{{ p.first }}</td>
+          <td>{{ p.last }}</td>
+          <td class="mono">{{ p.collected }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Related items</h2>
+    <p class="hint">Same category ({{ item.category }}).</p>
+    {% if related %}
+      <ul>
+        {% for r in related %}
+          <li><a href="/item/{{ r.slug }}">{{ r.name }}</a> <span class="stat-sub">· {{ r.unit }}</span></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="empty">This is the only tracked item in its category.</p>
+    {% endif %}
+    <div class="actions">
+      <a class="btn-sm" href="/items">All items</a>
+      <a class="btn-sm" href="/data">Raw data</a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

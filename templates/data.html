@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  <a href="/data?start={{ window.start }}&amp;end={{ window.end }}">Window: {{ window.start }} → {{ window.end or 'latest' }}</a>
+  <a href="/api/series.csv?start={{ window.start }}&amp;end={{ window.end }}">CSV</a>
+  <a href="/api/export.json?start={{ window.start }}&amp;end={{ window.end }}">Bulk JSON</a>
+  <a href="/status">Status</a>
+  <a href="/docs">API reference</a>
+</div>
+
+<div class="panel">
+  <h2>Data lineage</h2>
+  <p class="hint">Each stage is reproducible; nothing is edited by hand after ingestion.</p>
+  <div class="flow">
+    <span class="step">Source</span><span class="arrow">→</span>
+    <span class="step">Fetch</span><span class="arrow">→</span>
+    <span class="step">Validate</span><span class="arrow">→</span>
+    <span class="step">Stage with provenance</span><span class="arrow">→</span>
+    <span class="step">Approve / review</span><span class="arrow">→</span>
+    <span class="step">Basket index</span><span class="arrow">→</span>
+    <span class="step">Alerts</span><span class="arrow">→</span>
+    <span class="step">Insights</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Provenance</h2>
+    <p class="hint">Every approved point carries its source, method and collection time.</p>
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Source</th><th>Method</th><th class="r">Points</th><th>First</th><th>Last</th><th>Last collected</th></tr></thead>
+      <tbody>
+      {% for p in provenance %}
+        <tr>
+          <td class="mono">{{ p.source }}</td>
+          <td class="mono">{{ p.method }}</td>
+          <td class="r">{{ p.points }}</td>
+          <td>{{ p.first_date }}</td>
+          <td>{{ p.last_date }}</td>
+          <td class="mono">{{ p.last_collected }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <h2>Ingestion audit log</h2>
+    <p class="hint">One entry per pipeline run, with what it did to the dataset.</p>
+    <ul class="timeline">
+      {% for run in ingestions %}
+        <li>
+          <strong>{{ run.ran_at }}</strong> · {{ run.source }} / {{ run.method }}<br>
+          <span class="stat-sub">
+            target {{ run.target_date or '—' }} ·
+            {{ run.points_total }} fetched ·
+            {{ run.points_approved }} approved ·
+            {{ run.points_pending }} pending ·
+            {{ run.points_rejected }} rejected
+          </span>
+        </li>
+      {% else %}
+        <li>No ingestion runs recorded yet.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Basket cost index</h2>
+  <p class="hint">Equal-weight index, 100 on the first week of the window.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th scope="col">Week</th><th scope="col" class="r">Index</th></tr></thead>
+      <tbody>
+      {% for point in index %}
+        <tr><td class="mono">{{ point.date }}</td><td class="r">{{ '%.2f'|format(point.index) }}</td></tr>
+      {% else %}
+        <tr><td colspan="2">No observations in this window.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Monthly average basket cost</h2>
+  <p class="hint">Coarse view for long windows: mean of the weekly basket totals in each month.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th scope="col">Month</th><th scope="col" class="r">Average basket cost (Rs)</th></tr></thead>
+      <tbody>
+      {% for month, total in monthly %}
+        <tr><td class="mono">{{ month }}</td><td class="r">{{ '%.2f'|format(total) }}</td></tr>
+      {% else %}
+        <tr><td colspan="2">No observations in this window.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Observation matrix</h2>
+  <p class="hint">
+    Item × week, in rupees. Scroll horizontally for long windows; the item and
+    header rows stay pinned.
+  </p>
+  <div class="table-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th class="rowhead" scope="col">Item</th>
+          {% for d in dates %}<th scope="col">{{ d }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in matrix %}
+        <tr>
+          <th class="rowhead" scope="row"><a href="/item/{{ row.slug }}">{{ row.name }}</a></th>
+          {% for d in dates %}
+            <td>{% if row.by_date.get(d) is not none %}{{ '%.2f'|format(row.by_date[d]) }}{% else %}—{% endif %}</td>
+          {% endfor %}
+        </tr>
+      {% else %}
+        <tr><td colspan="2">No observations in this window.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

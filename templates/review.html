@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% set done = request.args.get('done') %}
+{% if done %}
+  <div class="panel tight">
+    <strong>Decision recorded:</strong> {{ done }}.
+    Cached API responses were invalidated and open dashboards were notified.
+  </div>
+{% endif %}
+
+<div class="pager">
+  <a href="/admin/review">Refresh queue</a>
+  <a href="/api/admin/pending">Queue as JSON</a>
+  <a href="/status">Pipeline status</a>
+  <a href="/data">Data lineage</a>
+</div>
+
+<div class="panel">
+  <h2>Why this queue exists</h2>
+  <p>
+    Automated validation classifies every ingested point. Plausible moves are
+    approved immediately; implausible ones are held here as <code>pending</code>
+    and are <strong>excluded from the public index, the alerts and every API
+    response</strong> until a human decides. That is what stops a bad scrape
+    from poisoning the index.
+  </p>
+  {% if token_required %}
+    <p class="hint">
+      <strong>ADMIN_TOKEN is configured</strong>, so this page must be opened by
+      an authenticated caller: send <code>X-Admin-Token</code> as a request
+      header (for example with curl), or use
+      <code>POST /api/admin/approve</code> with the token. Browser form posts
+      without the header will be refused with 401.
+    </p>
+  {% else %}
+    <p class="hint">
+      No <code>ADMIN_TOKEN</code> is set: admin routes accept strict-loopback
+      callers only, so this page works locally and is closed to the public.
+    </p>
+  {% endif %}
+</div>
+
+<div class="grid4">
+  <div class="stat">
+    <span class="stat-label">Awaiting review</span>
+    <span class="stat-value">{{ snapshot.pending_points }}</span>
+    <span class="stat-sub">held back by validation</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Approved</span>
+    <span class="stat-value">{{ snapshot.by_status.get('approved', 0) }}</span>
+    <span class="stat-sub">in the public index</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Rejected</span>
+    <span class="stat-value">{{ snapshot.by_status.get('rejected', 0) }}</span>
+    <span class="stat-sub">excluded everywhere</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Latest week</span>
+    <span class="stat-value" style="font-size:var(--fs-xl)">{{ snapshot.last_date or '—' }}</span>
+    <span class="stat-sub">{{ snapshot.freshness }}</span>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Pending observations</h2>
+  {% if pending %}
+    <form method="post" action="/admin/review/approve">
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th scope="col">Select</th>
+              <th scope="col">Item</th>
+              <th scope="col">Week</th>
+              <th scope="col" class="r">Price</th>
+              <th scope="col">Source</th>
+              <th scope="col">Method</th>
+              <th scope="col">Collected</th>
+              <th scope="col">Why held</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for p in pending %}
+            <tr>
+              <td><input type="checkbox" name="ids" value="{{ p.id }}"
+                         aria-label="Select the {{ p.item }} observation for {{ p.date }}" /></td>
+              <td>{{ p.item }}</td>
+              <td class="mono">{{ p.date }}</td>
+              <td class="r">Rs {{ '%.2f'|format(p.price) }}</td>
+              <td class="mono">{{ p.source }}</td>
+              <td class="mono">{{ p.method }}</td>
+              <td class="mono">{{ p.collected_at }}</td>
+              <td>{{ p.review_note or '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn-sm primary" type="submit">Approve selected</button>
+      </div>
+    </form>
+
+    <form method="post" action="/admin/review/approve" class="checkline" style="margin-top:var(--s4)">
+      <input type="hidden" name="all" value="1" />
+      <button class="btn-sm" type="submit">Approve everything ({{ pending|length }})</button>
+      <span class="stat-sub">Use with care: bulk approval bypasses the per-point check.</span>
+    </form>
+
+    <form method="post" action="/admin/review/reject" class="checkline" style="margin-top:var(--s2)">
+      <input type="hidden" name="all" value="1" />
+      <button class="btn-sm danger" type="submit">Reject everything ({{ pending|length }})</button>
+      <span class="stat-sub">Rejected points never enter the index.</span>
+    </form>
+  {% else %}
+    <div class="empty">
+      <h3>Nothing is waiting for review</h3>
+      <p>
+        Either everything ingested so far passed validation automatically, or
+        no pipeline run has produced a questionable point yet. To produce new
+        data, run the ingest job from the dashboard or
+        <code>POST /ingest/next</code>.
+      </p>
+      <div class="actions">
+        <a class="btn-sm primary" href="/">Open dashboard</a>
+        <a class="btn-sm" href="/data">See the audit log</a>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>API equivalents</h2>
+  <p class="hint">Same decisions, scriptable, with the admin token in a header.</p>
+  <ul>
+    <li><code class="path">GET /api/admin/pending</code> - read the queue</li>
+    <li><code class="path">POST /api/admin/approve</code> - <code>{"ids": [1,2]}</code> or <code>{"all": true}</code></li>
+    <li><code class="path">POST /api/admin/reject</code> - same body</li>
+  </ul>
+</div>
+
+{% endblock %}

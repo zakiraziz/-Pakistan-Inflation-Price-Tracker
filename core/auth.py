@@ -36,7 +36,11 @@ import log
 
 logger = log.get_logger("auth")
 
-PROTECTED_PREFIX = "/api/admin/"
+PROTECTED_PREFIXES = (
+    "/api/admin/",       # canonical admin API
+    "/api/v1/admin/",    # versioned alias of the same operations
+    "/admin/",           # server-rendered review queue
+)
 PROTECTED_POST = {"/ingest/next"}
 
 LOOPBACK = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
@@ -56,7 +60,7 @@ def _allow_local() -> bool:
 
 def is_protected(method: str, path: str) -> bool:
     """True when this request can change data / inspect the review queue."""
-    if path.startswith(PROTECTED_PREFIX):
+    if path.startswith(PROTECTED_PREFIXES):
         return True
     return method.upper() == "POST" and path in PROTECTED_POST
 

@@ -1,0 +1,76 @@
+{# Shared shell for every server-rendered page: nav, freshness banner, footer. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }} · Pakistan Inflation Tracker</title>
+  <meta name="description" content="Weekly prices for a basket of everyday goods in Pakistan, with a cost-of-living index, jump alerts and full data provenance." />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <meta name="theme-color" content="#046a38" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="/static/style.css?v={{ asset_v }}" />
+  <link rel="stylesheet" href="/static/pages.css?v={{ asset_v }}" />
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="shell-brand" href="/">
+    <span class="mark" aria-hidden="true">₨</span>
+    <span class="shell-brandtext">
+      <strong>Price Pulse</strong>
+      <small>Pakistan consumer price analytics</small>
+    </span>
+  </a>
+  <nav class="mainnav" aria-label="Primary">
+    {% for href, label in nav %}
+      <a href="{{ href }}"{% if request.path == href %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+    <a href="/methodology"{% if request.path == '/methodology' %} aria-current="page"{% endif %}>Methodology</a>
+  </nav>
+</header>
+
+<div class="fresh" role="status">
+  <span class="fresh-dot {{ 'ok' if status.age_days is not none and status.age_days <= 7 else 'warn' }}" aria-hidden="true"></span>
+  <span>
+    <strong>Data updated:</strong>
+    {% if status.last_date %}{{ status.last_date }} ({{ status.freshness }}){% else %}no approved data yet{% endif %}
+    <span class="sep">·</span>
+    <strong>Coverage:</strong> {{ status.first_date or '—' }} → {{ status.last_date or '—' }}
+    <span class="sep">·</span>
+    <strong>Basket:</strong> {{ status.items }} items, {{ status.approved_points }} approved points
+    {% if status.pending_points %}<span class="sep">·</span>
+      <a href="/admin/review">{{ status.pending_points }} awaiting review</a>
+    {% endif %}
+    <span class="sep">·</span>
+    <a href="/data">Sources &amp; provenance</a>
+  </span>
+</div>
+
+<main id="main" class="wrap">
+  <div class="pagehead">
+    <h1>{{ title }}</h1>
+    {% if subtitle %}<p class="lede">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="pagefoot">
+  <p>
+    <a href="/">Dashboard</a> ·
+    <a href="/insights">Insights</a> ·
+    <a href="/methodology">How the index is calculated</a> ·
+    <a href="/docs">API</a> ·
+    <a href="/api/export.json">Bulk JSON</a> ·
+    <a href="/api/series.csv">CSV</a>
+  </p>
+  <p class="fine">
+    Representative educational dataset · Flask + SQLite · API v{{ api_version }} ·
+    Every approved point carries its source, method and collection timestamp.
+  </p>
+</footer>
+</body>
+</html>

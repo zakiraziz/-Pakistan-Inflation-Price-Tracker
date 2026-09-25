@@ -466,3 +466,26 @@ footer { margin-top: var(--s7); color: var(--muted); font-size: var(--fs-sm); }
   .group.grow { min-width: 0; }
   .hero-actions { margin-left: 0; width: 100%; }
 }
+
+/* --- dashboard page menu: links to server-rendered analytics pages --- */
+.pagemenu {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2);
+  margin: 0 0 var(--s5); padding: var(--s2) var(--s4);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); box-shadow: var(--shadow);
+}
+.pagemenu-label {
+  color: var(--faint); font-size: var(--fs-xs); font-weight: var(--fw-600);
+  text-transform: uppercase; letter-spacing: .04em; margin-right: var(--s2);
+}
+.pagemenu a {
+  padding: 4px var(--s3); border-radius: var(--r-sm); color: var(--muted);
+  font-size: var(--fs-sm); font-weight: var(--fw-500); text-decoration: none;
+  border: 1px solid transparent; transition: background var(--t), color var(--t);
+}
+.pagemenu a:hover {
+  background: var(--surface-2); color: var(--ink); text-decoration: none;
+}
+@media (max-width: 900px) {
+  .pagemenu { gap: var(--s1); padding: var(--s2) var(--s3); }
+}

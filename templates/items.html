@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="pager">
+  <a href="/items?start={{ window.start }}&end={{ window.end }}&threshold={{ threshold }}">Window: {{ window.start }} → {{ window.end or 'latest' }}</a>
+  <a href="/?start={{ window.start }}&end={{ window.end }}">Open on dashboard</a>
+  <a href="/api/series.csv?start={{ window.start }}&end={{ window.end }}">Download CSV</a>
+  <a href="/compare">Compare two periods</a>
+</div>
+
+<div class="grid4">
+  <div class="stat">
+    <span class="stat-label">Basket change</span>
+    <span class="stat-value {{ 'up' if summary.pct > 0 else ('down' if summary.pct < 0 else 'flat') }}">{{ '%+.2f'|format(summary.pct) }}%</span>
+    <span class="stat-sub">Rs {{ '%.2f'|format(summary.start_total) }} → Rs {{ '%.2f'|format(summary.end_total) }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Annualised</span>
+    <span class="stat-value">{{ '%+.2f'|format(summary.annualized) }}%</span>
+    <span class="stat-sub">Same rate carried over a year</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Items rising</span>
+    <span class="stat-value">{{ summary.sharing_rises }}</span>
+    <span class="stat-sub">{{ summary.weeks }} weekly observations</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Average weekly volatility</span>
+    <span class="stat-value">{{ '%.2f'|format(summary.volatility) }}%</span>
+    <span class="stat-sub">Std dev of weekly moves</span>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>Biggest risers</h2>
+    <p class="hint">Largest increases across the window.</p>
+    {% if risers %}
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Item</th><th class="r">Change</th><th class="r">Latest</th><th></th></tr></thead>
+        <tbody>
+        {% for v in risers %}
+          <tr>
+            <td><a href="/item/{{ v.slug }}">{{ v.name }}</a><br><span class="stat-sub">{{ v.category }}</span></td>
+            <td class="r up"><strong>{{ '%+.2f'|format(v.pct) }}%</strong></td>
+            <td class="r">Rs {{ '%.2f'|format(v.last) }}</td>
+            <td><a class="btn-sm" href="/item/{{ v.slug }}">Why changed?</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <p class="empty">No item rose in this window.</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>Biggest fallers</h2>
+    <p class="hint">Largest decreases across the window.</p>
+    {% if fallers %}
+      <div class="table-wrap"><table class="data">
+        <thead><tr><th>Item</th><th class="r">Change</th><th class="r">Latest</th><th></th></tr></thead>
+        <tbody>
+        {% for v in fallers %}
+          <tr>
+            <td><a href="/item/{{ v.slug }}">{{ v.name }}</a><br><span class="stat-sub">{{ v.category }}</span></td>
+            <td class="r down"><strong>{{ '%+.2f'|format(v.pct) }}%</strong></td>
+            <td class="r">Rs {{ '%.2f'|format(v.last) }}</td>
+            <td><a class="btn-sm" href="/item/{{ v.slug }}">Why changed?</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    {% else %}
+      <p class="empty">No item fell in this window.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2>All tracked items</h2>
+  <p class="hint">
+    Sorted by change over the window. Volatility is the standard deviation of
+    weekly moves. Contribution shows how many percentage points of the basket
+    move this item accounts for. Select a name to drill down.
+  </p>
+  <div class="table-wrap">
+    <table class="data">
+      <caption>{{ views|length }} items · {{ summary.weeks }} weekly observations · window {{ window.start }} → {{ window.end or 'latest' }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col">Category</th>
+          <th scope="col">Unit</th>
+          <th scope="col">Trend</th>
+          <th scope="col" class="r">Start</th>
+          <th scope="col" class="r">Latest</th>
+          <th scope="col" class="r">Change</th>
+          <th scope="col" class="r">Volatility</th>
+          <th scope="col" class="r">Contribution</th>
+          <th scope="col">Last weeks</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for v in views %}
+        <tr>
+          <td><a href="/item/{{ v.slug }}">{{ v.name }}</a></td>
+          <td>{{ v.category }}</td>
+          <td>{{ v.unit }}</td>
+          <td>{{ v.trend }}</td>
+          <td class="r">Rs {{ '%.2f'|format(v.first) }}</td>
+          <td class="r">Rs {{ '%.2f'|format(v.last) }}</td>
+          <td class="r {{ 'up' if v.pct > 0 else ('down' if v.pct < 0 else 'flat') }}"><strong>{{ '%+.2f'|format(v.pct) }}%</strong></td>
+          <td class="r">{{ '%.2f'|format(v.volatility) }}%</td>
+          <td class="r">{{ '%+.2f'|format(v.contribution_pct) }} pp</td>
+          <td>{{ sprites.get(v.slug, '')|safe }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
