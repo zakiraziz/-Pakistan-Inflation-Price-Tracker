@@ -130,4 +130,65 @@ ENDPOINTS = [
         "params": [P_START, P_END, P_ITEMS],
         "auth": "public",
     },
+    {
+        "group": "Analytics",
+        "method": "GET",
+        "path": "/api/insights",
+        "summary": "What changed and why",
+        "description": "Rule-based narratives: headline basket move, top "
+        "risers/fallers, threshold breaches and statistically unusual moves. "
+        "Calculated facts are separated from possible contributing factors.",
+        "params": [P_START, P_END, P_ITEMS, P_THRESHOLD],
+        "auth": "public",
+    },
+    {
+        "group": "Analytics",
+        "method": "GET",
+        "path": "/api/items/{slug}",
+        "summary": "Item detail",
+        "description": "Full history, statistics, volatility, contribution to "
+        "the basket and the provenance of every observation for one item.",
+        "params": [
+            {
+                "name": "slug",
+                "in": "path",
+                "type": "string",
+                "required": True,
+                "description": "URL slug of the item, e.g. 'onion'.",
+            },
+            P_START,
+            P_END,
+        ],
+        "auth": "public",
+    },
+    {
+        "group": "Analytics",
+        "method": "GET",
+        "path": "/api/compare",
+        "summary": "Compare two windows",
+        "description": "The same items across two date ranges, with the "
+        "difference between the two changes to show acceleration or reversal.",
+        "params": [
+            P_ITEMS,
+            {
+                "name": "a_start", "in": "query", "type": "string",
+                "format": "date", "required": True,
+                "description": "Start of window A.",
+            },
+            {
+                "name": "a_end", "in": "query", "type": "string",
+                "format": "date", "description": "End of window A.",
+            },
+            {
+                "name": "b_start", "in": "query", "type": "string",
+                "format": "date", "required": True,
+                "description": "Start of window B.",
+            },
+            {
+                "name": "b_end", "in": "query", "type": "string",
+                "format": "date", "description": "End of window B.",
+            },
+        ],
+        "auth": "public",
+    },
 ]
