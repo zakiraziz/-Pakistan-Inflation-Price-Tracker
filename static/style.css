@@ -13,24 +13,49 @@
   --fs-xl: 18px; --fs-2xl: 22px; --fs-3xl: 28px;
   --fw-400: 400; --fw-500: 500; --fw-600: 600; --fw-700: 700;
 
-  /* colour — Pakistan flag palette: green + white, one accent, three greys */
+  /* colour — Pakistan flag palette: green + white, one accent, three greys.
+     The palette is light-only: declaring it stops Chrome/Edge from darkening
+     form controls and scrollbars when the OS itself is in dark mode. */
+  color-scheme: light;
+
+  /* Ratios below are WCAG 2.x contrast, always in the order --surface (white
+     cards) / --bg (page body) / --surface-2 (tinted rows and chips). Anything
+     used as text clears 4.5:1 on all three; tests/test_token_parity.py recomputes
+     them and fails on drift. --surface-2 is the tightest surface — --up measures
+     4.60:1 there, the smallest margin in the palette — so the 4.6 figures are the
+     ones to watch before touching --surface-2, --bg or any value below. */
   --bg: #f4f7f5;
   --surface: #ffffff;
   --surface-2: #edf3ef;
   --border: #dce6e0;
   --border-strong: #c1d0c7;
-  --ink: #12211a;
-  --muted: #4f5f57;
-  --faint: #78877e;
-  --accent: #046a38;        /* Pakistan flag green */
-  --accent-strong: #01411c; /* deep flag green (hoist) */
+  --ink: #12211a;           /* 16.7 / 15.5 / 14.8 : 1 */
+  --muted: #4f5f57;         /*  6.8 /  6.3 /  6.0 : 1 */
+  /* the faint grey carries 12–13px labels (.hint, .view-sub, .foot-note, table
+     captions). Its worst case is --surface-2, not white: #6b7a71 measured 4.02:1
+     there and 4.19:1 on --bg while still clearing 4.52:1 on white — which is
+     exactly how testing against white alone hid the problem. #656f68 clears all
+     three, tightest 4.64:1, so re-run the parity test before lightening it or
+     changing a surface. */
+  --faint: #656f68;         /*  5.2 /  4.8 /  4.6 : 1 */
+  --accent: #046a38;        /* Pakistan flag green — 6.7 / 6.2 / 6.0 : 1 */
+  --accent-strong: #01411c; /* deep flag green (hoist) — 11.8 / 11.0 / 10.5 : 1 */
   --accent-soft: #e9f4ee;
-  --up: #c2410c;            /* price rises (colorblind-safe vermillion) */
-  --down: #009e73;          /* price falls (green) */
+  /* --up / --down fill and stroke charts, bars and dots — non-text graphics, so
+     WCAG 1.4.11 asks 3:1 against the surface (5.2 and 3.4 here: fine). #009e73
+     is only 3.4:1 on white, so text meaning "down" uses --down-ink instead;
+     --up clears 4.6:1 everywhere and colours text as-is. Never colour text with
+     --down or --warn — use the -ink variant, or --ink/--muted/--faint. */
+  --up: #c2410c;            /* price rises (colorblind-safe vermillion) — 4.6+:1 */
+  --down: #009e73;          /* price falls (green) — fills and strokes only */
+  --down-ink: #04684f;      /* same hue, dark enough for text — 6.8 / 6.3 / 6.0 : 1 */
   --danger-soft: #fdf0ee;
+  --warn: #b45309;          /* pending review / stale / reconnecting — fills only */
+  --warn-soft: #fdf1dd;
 
   --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
   --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1);
+  --shadow-lift: 0 8px 20px rgba(16,24,40,.09), 0 1px 3px rgba(16,24,40,.06);
   --t: 150ms ease;
 }
 
@@ -59,6 +84,15 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
   font-size: var(--fs-sm); background: var(--surface-2);
   padding: 1px 5px; border-radius: var(--r-sm); }
 
+/* colour / numeric utilities — shared by the dashboard, the static pages and
+   the SVG charts so a rise is always the same colour everywhere.
+   Text uses --down-ink (--down is only 3.4:1 on white); the fill class below
+   keeps --down, so bars and dots stay the brighter green. */
+.up { color: var(--up); }
+.down { color: var(--down-ink); }
+.flat { color: var(--faint); }
+.tnum { font-variant-numeric: tabular-nums; }
+
 .icon { width: 18px; height: 18px; flex: none; }
 
 /* focus rings — non-negotiable */
@@ -69,7 +103,11 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
 
 /* ---------- hero ---------- */
 .hero { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
-  background: var(--surface); border: 1px solid var(--border);
+  /* layered background keeps the accent wash behind the text, not over it */
+  background:
+    radial-gradient(260px 180px at 100% 50%, var(--accent-soft) 0, rgba(255,255,255,0) 72%),
+    var(--surface);
+  border: 1px solid var(--border);
   border-left: 4px solid var(--accent); border-radius: var(--r-lg);
   padding: var(--s4) var(--s5); box-shadow: var(--shadow); }
 .logo { position: relative; width: 44px; height: 44px; border-radius: var(--r-md);
@@ -81,7 +119,7 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
   width: 10px; height: 10px; background: #fff;
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
     50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
-.brand h1 { font-size: var(--fs-2xl); }
+.brand h1 { font-size: var(--fs-2xl); line-height: 1.15; }
 .brand .sub { color: var(--muted); font-size: var(--fs-md); margin-top: 2px; }
 .hero-actions { margin-left: auto; display: flex; align-items: center;
   gap: var(--s3); }
@@ -105,7 +143,7 @@ code { font-family: ui-monospace, "SF Mono", Consolas, monospace;
 .live[data-state="live"] .live-dot { background: var(--accent);
   animation: live-pulse 2.4s ease-out infinite; }
 .live[data-state="connecting"] .live-dot,
-.live[data-state="retrying"] .live-dot { background: #b45309;
+.live[data-state="retrying"] .live-dot { background: var(--warn);
   animation: live-pulse 1.2s ease-out infinite; }
 .live[data-state="offline"] { background: var(--danger-soft);
   border-color: rgba(194,65,12,.3); color: var(--up); }
@@ -164,17 +202,22 @@ input:hover { border-color: var(--faint); }
 /* ---------- KPI cards ---------- */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--s4); margin: var(--s5) 0; }
-.kpi { background: var(--surface); border: 1px solid var(--border);
+.kpi { position: relative; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-lg); padding: var(--s4) var(--s5);
   display: flex; flex-direction: column; gap: var(--s1); box-shadow: var(--shadow);
   transition: border-color var(--t), box-shadow var(--t); }
-.kpi:hover { border-color: var(--border-strong); box-shadow: 0 2px 8px rgba(16,24,40,.08); }
+/* accent rail slides in on hover so the card reacts without moving */
+.kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: var(--accent); opacity: 0; transition: opacity var(--t); }
+.kpi:hover { border-color: var(--border-strong); box-shadow: var(--shadow-lift); }
+.kpi:hover::before { opacity: 1; }
 .kpi-label { color: var(--muted); font-size: var(--fs-xs); font-weight: var(--fw-600);
   text-transform: uppercase; letter-spacing: .06em; }
 .kpi-value { font-size: var(--fs-3xl); font-weight: var(--fw-700);
   letter-spacing: -0.02em; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--s2); }
 .kpi-value.up { color: var(--up); }
-.kpi-value.down { color: var(--down); }
+.kpi-value.down { color: var(--down-ink); }
 .kpi-sub { color: var(--muted); font-size: var(--fs-sm); }
 
 /* alert chips */
@@ -212,7 +255,8 @@ input:hover { border-color: var(--faint); }
   color: var(--muted); background: none; border: none;
   border-bottom: 2px solid transparent; padding: var(--s2) var(--s3) var(--s3);
   cursor: pointer; transition: color var(--t), border-color var(--t); }
-.tab:hover { color: var(--ink); }
+.tab:hover { color: var(--ink); background: var(--surface-2);
+  border-radius: var(--r-sm) var(--r-sm) 0 0; }
 .tab.on { color: var(--ink); font-weight: var(--fw-600);
   border-bottom-color: var(--accent); }
 .tabs .info { margin-left: auto; color: var(--faint); font-size: var(--fs-sm); }
@@ -264,10 +308,20 @@ details summary { cursor: pointer; color: var(--muted); font-size: var(--fs-sm);
   font-size: var(--fs-xs); font-weight: var(--fw-600); padding: 0 7px; margin-left: 6px; }
 
 /* ---------- views ---------- */
-.view { min-height: 420px; }
+/* min-height is scoped to the SPA's #view so short server-rendered sections
+   (methodology.html) are not padded out with dead space; sibling sections get
+   their own rhythm instead */
+.view + .view { margin-top: var(--s6); }
+/* 420px is the tallest thing the dashboard swaps into #view (the compare chart
+   and its legend), so switching tabs does not jog the rest of the page */
+#view { min-height: 420px; }
 .viewhead { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
-  margin-bottom: var(--s4); }
-.viewtitle { font-size: var(--fs-xl); font-weight: var(--fw-700); }
+  margin-bottom: var(--s4); padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--border); }
+/* the SPA's #view already sits directly under the tab rule, so it opts out of
+   the second hairline */
+#view > .viewhead { padding-bottom: 0; border-bottom: 0; }
+.viewtitle { font-size: var(--fs-xl); font-weight: var(--fw-700); letter-spacing: -0.01em; }
 .view-sub { color: var(--faint); font-size: var(--fs-sm); margin-left: auto; }
 .subnav { display: flex; gap: var(--s1); margin-left: auto;
   background: var(--surface-2); border-radius: var(--r-md); padding: 3px; }
@@ -278,25 +332,30 @@ details summary { cursor: pointer; color: var(--muted); font-size: var(--fs-sm);
 .subtab:hover { color: var(--ink); }
 .subtab.on { color: var(--ink); background: var(--surface);
   font-weight: var(--fw-600); box-shadow: var(--shadow); }
-.chartbox { width: 100%; max-height: 440px; }
+/* chart card: the canvas gets the same flat surface as every other panel */
+.chartbox { width: 100%; max-height: 440px; padding: var(--s4) var(--s4) var(--s2);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); box-shadow: var(--shadow); }
 .chartbox canvas { width: 100%; max-height: 420px; }
 .hint { color: var(--faint); font-size: var(--fs-sm); margin-top: var(--s3); }
 /* ---------- data table ---------- */
-.tablebox { overflow: auto; max-height: 420px;
+.tablebox { overflow: auto; max-height: 420px; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--r-md); }
 table { border-collapse: collapse; width: 100%; font-size: var(--fs-md); }
 thead th { position: sticky; top: 0; z-index: 2; background: var(--accent-soft);
   color: var(--accent-strong); font-size: var(--fs-xs); font-weight: var(--fw-600);
   text-transform: uppercase; letter-spacing: .06em; text-align: left;
-  padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); }
-tbody td { padding: var(--s2) var(--s3);
-  border-bottom: 1px solid var(--border); }
+  padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border);
+  /* inset hairline survives scrolling (a sticky cell's border-bottom does not) */
+  box-shadow: inset 0 -1px 0 var(--border-strong); }
+tbody td { padding: 9px var(--s3); border-bottom: 1px solid var(--border); }
+tbody tr { transition: background var(--t); }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--surface-2); }
 td.nm { font-weight: var(--fw-600); }
 td.chg { font-weight: var(--fw-600); font-variant-numeric: tabular-nums; }
 td.chg.up { color: var(--up); }
-td.chg.down { color: var(--down); }
+td.chg.down { color: var(--down-ink); }
 
 /* ---------- alerts ---------- */
 .alerts { margin: var(--s5) 0; }
@@ -366,7 +425,7 @@ td.chg.down { color: var(--down); }
 .catbar-val { width: 64px; text-align: right; font-weight: var(--fw-700);
   font-variant-numeric: tabular-nums; }
 .catbar-val.up { color: var(--up); }
-.catbar-val.down { color: var(--down); }
+.catbar-val.down { color: var(--down-ink); }
 .catbar-sub { width: 130px; flex: none; color: var(--faint); font-size: var(--fs-sm);
   text-align: right; }
 .catbars { background: var(--surface); border: 1px solid var(--border);
@@ -398,24 +457,39 @@ td.chg.down { color: var(--down); }
 .fresh-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
   margin-right: 6px; vertical-align: middle; background: var(--border-strong); }
 .fresh-dot.fresh { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.fresh-dot.stale { background: #b45309; box-shadow: 0 0 0 3px #fdf0d5; }
+.fresh-dot.stale { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
 .btn-tag { font-size: var(--fs-sm); font-weight: var(--fw-700); margin-left: 4px; }
 
 /* ---------- footer, toast, error page ---------- */
 footer { margin-top: var(--s7); color: var(--muted); font-size: var(--fs-sm); }
-.foot-grid { display: grid; grid-template-columns: 1.5fr .95fr 1fr 1.1fr; gap: var(--s6);
+/* site footer on the dashboard: a flag-green stub on a hairline rule, so the
+   page closes the way it opened (the 5px flag band at the top) */
+.site-foot { position: relative; margin-top: var(--s7); padding-top: var(--s6);
+  border-top: 1px solid var(--border); }
+.site-foot::before { content: ""; position: absolute; top: -2px; left: 0;
+  width: 96px; height: 2px; border-radius: 999px; background: var(--accent); }
+.foot-grid { display: grid; grid-template-columns: 1.5fr .95fr 1fr 1.1fr;
+  gap: var(--s5) var(--s6); align-items: start;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-lg); padding: var(--s6); box-shadow: var(--shadow); }
 .foot-brand { display: flex; gap: var(--s3); align-items: flex-start;
   margin-bottom: var(--s4); }
 .foot-logo { width: 36px; height: 36px; font-size: var(--fs-lg); flex: none; }
 .foot-about h2 { font-size: var(--fs-lg); }
-.foot-about > div > p { color: var(--muted); margin-top: 2px; }
+.foot-brand p { color: var(--muted); margin-top: 2px; }
 .foot-note { color: var(--faint); line-height: 1.65; }
 .foot-note strong { color: var(--muted); }
 .foot-col h3 { font-size: var(--fs-sm); text-transform: uppercase; letter-spacing: .08em;
   color: var(--faint); margin: 0 0 var(--s3); }
 .foot-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s2); }
+/* underline-on-hover drawn with a background gradient: no reflow on hover */
+.foot-col ul a, .foot-bottom a { color: var(--muted); font-weight: var(--fw-500); }
+.foot-col ul a:hover, .foot-bottom a:hover,
+.foot-col ul a:focus-visible, .foot-bottom a:focus-visible {
+  color: var(--accent-strong); text-decoration: none;
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-repeat: no-repeat; background-size: 100% 1px;
+  background-position: 0 100%; }
 .foot-stats { margin: 0; display: grid; gap: var(--s2); align-content: start; }
 .foot-stats > div { display: flex; justify-content: space-between; gap: var(--s3);
   border-bottom: 1px dashed var(--border); padding-bottom: var(--s1); }
@@ -429,7 +503,7 @@ footer { margin-top: var(--s7); color: var(--muted); font-size: var(--fs-sm); }
 .toast { position: fixed; bottom: var(--s5); right: var(--s5);
   background: var(--ink); color: var(--bg); border-radius: var(--r-md);
   padding: var(--s3) var(--s4); font-weight: var(--fw-500);
-  box-shadow: var(--shadow); opacity: 0; transform: translateY(var(--s1));
+  box-shadow: var(--shadow-lift); opacity: 0; transform: translateY(var(--s2));
   transition: opacity var(--t), transform var(--t); z-index: 60;
   pointer-events: none; }
 .toast.show { opacity: 1; transform: translateY(0); }

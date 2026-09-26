@@ -13,8 +13,12 @@
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .topbar {
+  position: sticky; top: 5px; z-index: 40;  /* clears the 5px flag band (body::before) */
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4);
   padding: var(--s4) var(--s5); max-width: 1180px; margin: 0 auto;
+  background: rgba(255,255,255,.92);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
 }
 .shell-brand { display: flex; align-items: center; gap: var(--s3); }
 .shell-brand .mark {
@@ -47,17 +51,28 @@
 .fresh .sep { color: var(--border-strong); margin: 0 var(--s1); }
 .fresh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .fresh-dot.ok { background: var(--accent); }
-.fresh-dot.warn { background: #b45309; }
+.fresh-dot.warn { background: var(--warn); }
 
 .wrap { max-width: 1180px; margin: 0 auto; padding: var(--s6) var(--s5) var(--s7); }
-.pagehead { margin-bottom: var(--s5); }
-.pagehead h1 { font-size: var(--fs-3xl); }
-.lede { color: var(--muted); margin-top: var(--s1); max-width: 78ch; }
+.pagehead { margin-bottom: var(--s5); padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border); }
+.pagehead h1 { font-size: var(--fs-3xl); line-height: 1.15; letter-spacing: -0.02em; }
+.lede { color: var(--muted); margin-top: var(--s2); max-width: 78ch;
+  font-size: var(--fs-lg); line-height: 1.6; }
 
 .pagefoot {
-  max-width: 1180px; margin: 0 auto; padding: var(--s5);
+  position: relative;
+  max-width: 1180px; margin: 0 auto; padding: var(--s6) var(--s5);
   border-top: 1px solid var(--border); color: var(--muted); font-size: var(--fs-sm);
 }
+/* flag-green stub on the rule, matching the dashboard's .site-foot */
+.pagefoot::before { content: ""; position: absolute; top: -2px; left: var(--s5);
+  width: 96px; height: 2px; border-radius: 999px; background: var(--accent); }
+.pagefoot a { color: var(--muted); font-weight: var(--fw-500); }
+.pagefoot a:hover, .pagefoot a:focus-visible {
+  color: var(--accent-strong); text-decoration: none;
+  background-image: linear-gradient(var(--accent), var(--accent));
+  background-repeat: no-repeat; background-size: 100% 1px; background-position: 0 100%; }
 .pagefoot .fine { color: var(--faint); margin-top: var(--s2); font-size: var(--fs-xs); }
 
 /* --- panels ------------------------------------------------------------ */
@@ -66,7 +81,7 @@
   border-radius: var(--r-lg); padding: var(--s5); margin-bottom: var(--s5);
   box-shadow: var(--shadow);
 }
-.panel > h2 { font-size: var(--fs-xl); margin-bottom: var(--s1); }
+.panel > h2 { font-size: var(--fs-xl); letter-spacing: -0.01em; margin-bottom: var(--s1); }
 .panel > .hint { color: var(--faint); font-size: var(--fs-sm); margin-bottom: var(--s4); }
 .panel.tight { padding: var(--s4); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s5); }
@@ -74,28 +89,40 @@
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s4); }
 
 /* --- stat tiles -------------------------------------------------------- */
-.stat { background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: var(--s4); }
+.stat { position: relative; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: var(--s4);
+  transition: border-color var(--t), box-shadow var(--t); }
+/* same accent rail as the dashboard KPI cards */
+.stat::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px;
+  background: var(--accent); opacity: 0; transition: opacity var(--t); }
+.stat:hover { border-color: var(--border-strong); box-shadow: var(--shadow-lift); }
+.stat:hover::before { opacity: 1; }
 .stat .stat-label { display: block; color: var(--faint); font-size: var(--fs-xs);
   text-transform: uppercase; letter-spacing: .04em; font-weight: var(--fw-600); }
 .stat .stat-value { display: block; font-size: var(--fs-2xl); font-weight: var(--fw-700);
-  margin: var(--s1) 0; font-variant-numeric: tabular-nums; }
+  margin: var(--s1) 0; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .stat .stat-sub { color: var(--muted); font-size: var(--fs-sm); }
 .up { color: var(--up); }
-.down { color: var(--down); }
+.down { color: var(--down-ink); }   /* text-safe green; --down fills charts */
 .flat { color: var(--faint); }
 .tnum { font-variant-numeric: tabular-nums; }
 
 /* --- tables ------------------------------------------------------------ */
-.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); }
 table.data { border-collapse: collapse; width: 100%; font-size: var(--fs-sm); background: var(--surface); }
-table.data caption { text-align: left; padding: var(--s3); color: var(--faint); }
-table.data th, table.data td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); text-align: left; }
+table.data caption { text-align: left; padding: var(--s3) var(--s4); color: var(--faint);
+  background: var(--surface-2); border-bottom: 1px solid var(--border); }
+table.data th, table.data td { padding: 9px var(--s4); border-bottom: 1px solid var(--border); text-align: left; }
 table.data thead th {
   background: var(--surface-2); color: var(--muted); font-weight: var(--fw-600);
   font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .04em;
+  border-bottom-color: var(--border-strong);
 }
+table.data tbody tr { transition: background var(--t); }
 table.data tbody tr:hover { background: var(--accent-soft); }
+table.data tbody tr:last-child td { border-bottom: none; }
 table.data td.r, table.data th.r { text-align: right; font-variant-numeric: tabular-nums; }
 table.data td.mono { font-family: ui-monospace, Consolas, monospace; }
 
@@ -114,8 +141,9 @@ table.data td.mono { font-family: ui-monospace, Consolas, monospace; }
 
 /* --- badges + chips ---------------------------------------------------- */
 .badge {
-  display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px;
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px;
   border-radius: 999px; font-size: var(--fs-xs); font-weight: var(--fw-600);
+  letter-spacing: .02em; line-height: 1.5; white-space: nowrap;
   border: 1px solid var(--border-strong); color: var(--muted); background: var(--surface-2);
 }
 .badge.get { color: #05506f; border-color: #b6d7e6; background: #eef7fb; }
@@ -123,11 +151,13 @@ table.data td.mono { font-family: ui-monospace, Consolas, monospace; }
 .badge.public { color: var(--accent-strong); border-color: #bfdccb; background: var(--accent-soft); }
 .badge.admin { color: #8a1c1c; border-color: #e7bcbc; background: #fdf0f0; }
 .badge.up { color: var(--up); border-color: #eec7ac; background: var(--danger-soft); }
-.badge.down { color: #04684f; border-color: #b6dfd0; background: #eaf7f2; }
+.badge.down { color: var(--down-ink); border-color: #b6dfd0; background: #eaf7f2; }
 
 /* --- insight cards ----------------------------------------------------- */
 .insight { border: 1px solid var(--border); border-left: 4px solid var(--accent);
-  border-radius: var(--r-md); padding: var(--s4); background: var(--surface); margin-bottom: var(--s4); }
+  border-radius: var(--r-md); padding: var(--s4); background: var(--surface); margin-bottom: var(--s4);
+  transition: border-color var(--t), box-shadow var(--t); }
+.insight:hover { box-shadow: var(--shadow-lift); }
 .insight.high { border-left-color: var(--up); }
 .insight.medium { border-left-color: #e69f00; }
 .insight h3 { font-size: var(--fs-lg); margin-bottom: var(--s2); display: flex;
@@ -198,7 +228,9 @@ details > summary { cursor: pointer; }
 /* --- flow diagram (methodology / data lineage) ------------------------ */
 .flow { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
 .flow .step { border: 1px solid var(--border-strong); border-radius: var(--r-md);
-  padding: var(--s2) var(--s3); background: var(--surface); font-size: var(--fs-sm); }
+  padding: var(--s2) var(--s3); background: var(--surface); font-size: var(--fs-sm);
+  font-weight: var(--fw-500); transition: border-color var(--t), background var(--t); }
+.flow .step:hover { border-color: var(--accent); background: var(--accent-soft); }
 .flow .arrow { color: var(--faint); }
 
 /* --- page menu: links from the dashboard to the analytics pages ---------- */

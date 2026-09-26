@@ -31,6 +31,7 @@ PALETTE = [
 
 UP = "#c2410c"
 DOWN = "#009e73"
+FAINT = "#656f68"  # neutral / no-change grey — mirrors --faint in static/style.css
 
 
 def color_for(index: int) -> str:
@@ -192,5 +193,5 @@ def bars(rows, width=860, row_height=24, label_w=200, value_suffix="%",
 def change_color(value) -> str:
     """Colour for a signed percentage (rises = warm, falls = cool green)."""
     if value is None:
-        return "#78877e"
-    return UP if value > 0 else (DOWN if value < 0 else "#78877e")
+        return FAINT
+    return UP if value > 0 else (DOWN if value < 0 else FAINT)

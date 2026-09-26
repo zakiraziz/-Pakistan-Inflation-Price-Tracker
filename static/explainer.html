@@ -6,13 +6,20 @@
   <title>Economics explainer · Pakistan Inflation / Price Tracker</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
-    main { max-width: 760px; margin: 0 auto; background: var(--panel); border-radius: 12px; padding: 24px 28px; }
-    main h1 { color: var(--accent); }
-    main h2 { color: var(--ink); margin-top: 22px; }
-    main p, main li { color: var(--ink); line-height: 1.65; }
-    main table { width: 100%; font-size: 0.9rem; }
-    .note { color: var(--muted); font-size: 0.85rem; }
-    a.back { color: var(--accent); }
+    main { max-width: 760px; margin: var(--s6) auto; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--r-lg);
+      padding: var(--s6); box-shadow: var(--shadow); }
+    main h1 { color: var(--accent-strong); font-size: var(--fs-2xl); letter-spacing: -0.02em; }
+    main h2 { color: var(--ink); margin-top: var(--s5); font-size: var(--fs-xl); letter-spacing: -0.01em; }
+    main p, main li { line-height: 1.65; }
+    main table { font-size: var(--fs-sm); }
+    main table td:nth-child(2), main table td:nth-child(3) { font-variant-numeric: tabular-nums; }
+    .note { color: var(--muted); font-size: var(--fs-sm); }
+    a.back { display: inline-flex; align-items: center; padding: 3px var(--s3);
+      border: 1px solid var(--border-strong); border-radius: 999px;
+      background: var(--surface); font-size: var(--fs-sm); font-weight: var(--fw-500); }
+    a.back:hover { color: var(--accent-strong); background: var(--accent-soft);
+      border-color: var(--accent); text-decoration: none; }
   </style>
 </head>
 <body>
@@ -28,7 +35,10 @@
   buy the same things today. Prices broadly doubled in three and a half years.</p>
 
   <table>
-    <tr><th>Item</th><th>Start → latest</th><th>Cumulative</th></tr>
+    <thead>
+      <tr><th scope="col">Item</th><th scope="col">Start → latest</th><th scope="col">Cumulative</th></tr>
+    </thead>
+    <tbody>
     <tr><td>Tea (packed) — per kg</td><td>1,950 → 5,209</td><td class="up">+167%</td></tr>
     <tr><td>Electricity — per kWh</td><td>35 → 87</td><td class="up">+151%</td></tr>
     <tr><td>Petrol (super) — per litre</td><td>271 → 637</td><td class="up">+135%</td></tr>
@@ -57,7 +67,8 @@
     <tr><td>Garlic — per kg</td><td>526 → 937</td><td class="up">+78%</td></tr>
     <tr><td>Potato — per kg</td><td>67 → 107</td><td class="up">+59%</td></tr>
     <tr><td>Tomato — per kg</td><td>141 → 156</td><td class="up">+11%</td></tr>
-</table>
+    </tbody>
+  </table>
 
   <h2>Why the lines are steep in 2023 and flatten by 2025–26</h2>
   <p>Zoom into 2023–24 and the lines climb steeply; from 2025 on they are much flatter.

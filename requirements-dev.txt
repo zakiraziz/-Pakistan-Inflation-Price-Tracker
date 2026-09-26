@@ -1,5 +1,13 @@
 pytest>=8.0
 pytest-cov>=5.0
-ruff>=0.6
-black>=24.0
+# Lint/format tooling is pinned to the revs in .pre-commit-config.yaml. As open floors
+# (`ruff>=0.6`, `black>=24.0`) CI resolved whatever was newest, and the committed code is
+# black 24.8.0 output - black 25/26 reformats it, so `black --check` failed on a clean
+# checkout. Pinning keeps that gate meaningful and CI reproducible.
+#
+# Expected state, deliberately: under black 26.x, `black --check .` still flags 9 files,
+# because those files are formatted to 24.8.0. Reformatting them to satisfy a newer black
+# would diverge from the formatter this project declares. Revisit when raising the pin.
+ruff==0.6.9
+black==24.8.0
 mypy>=1.10

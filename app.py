@@ -695,8 +695,8 @@ def admin_reject():
 # Imported at the bottom on purpose: the page routes read from the same data
 # layer as the API, and the versioning pass must see every /api/ rule that
 # exists, so both are attached once the app is fully built.
-from web.pages import bp as pages_bp  # noqa: E402  (must follow app setup)
 from core.versioning import install as install_versions  # noqa: E402
+from web.pages import bp as pages_bp  # noqa: E402  (must follow app setup)
 
 app.register_blueprint(pages_bp)
 ALIAS_COUNT = install_versions(app)

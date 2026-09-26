@@ -18,7 +18,6 @@ fact/context separation is already in the data model.
 from __future__ import annotations
 
 import db
-
 import services.readmodels as rm
 
 # Category-level context. Deliberately generic and hedged: this is the kind of

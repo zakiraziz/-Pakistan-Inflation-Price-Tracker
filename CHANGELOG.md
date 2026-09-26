@@ -4,6 +4,105 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **A contrast guarantee for the palette, enforced by tests.** Every colour the
+  site uses for text now clears WCAG AA (4.5:1) on all three surfaces text can
+  land on — white cards, the page body, the tinted chips — and
+  `tests/test_token_parity.py` recomputes those ratios on every run. The same
+  test fails if `web/svg.py` or `static/helpers.js` drift from the stylesheet,
+  which nothing checked before: `FAINT`, `UP` and `DOWN` are the only values that
+  two files must agree on, and nothing enforced it.
+- `--down-ink` (`#04684f`), the green used for text meaning "price fell". `--down`
+  (`#009e73`, the colorblind-safe Okabe-Ito green) stays the chart fill and stroke
+  colour, where WCAG asks 3:1 for non-text rather than 4.5:1.
+- `--warn` / `--warn-soft` and `--shadow-lift` tokens, replacing the same amber
+  hex repeated across three rules, and `.up` / `.down` / `.flat` / `.tnum`
+  utilities shared by the dashboard, the server-rendered pages and the charts.
+- **The dashboard footer is now styled.** `.site-foot`, the wrapper around the
+  footer card, had no CSS rule at all, so the closing band of the page was
+  unstyled — the only class in `static/index.html` without a selector.
+  `verify.py`'s stylesheet-coverage check goes 64/65 → 65/65.
+
+### Changed
+- **The faint grey is now readable everywhere, not just on white.** The grey
+  carries 12–13px labels (`.hint`, `.view-sub`, `.foot-note`, table captions, KPI
+  labels) and measured 3.77:1 on white / 4.19:1 on the page background; it is now
+  `#656f68`, 4.6:1 on the darkest surface and 5.2:1 on white. Text meaning "price
+  fell" moves from `--down` (3.4:1) to `--down-ink` (6.8:1) in the KPI tiles, item
+  tables, category bars, badges and the dashboard's `.down` utility — bars, dots
+  and chart lines keep the brighter green.
+- **The methodology page no longer ends in roughly 3,000px of blank space.** This
+  is a behaviour change: `min-height: 420px` was written for the dashboard's chart
+  view but applied to every `.view`, and `methodology.html` has eight of them. The
+  floor is now scoped to `#view`. Grepping every template shows `.view` is used
+  nowhere else outside the SPA shell, so exactly one page loses the floor — the one
+  that was 3,000px too tall.
+- `color-scheme: light` is declared, so Chrome/Edge no longer darken form controls
+  and scrollbars when the OS is in dark mode.
+- Polish visible on every page: a sticky topbar on the server-rendered views; a
+  `.pagehead` / `.lede` typography pass; KPI and stat tiles that reveal an accent
+  rail and lift on hover; the dashboard chart canvas on the same card surface as
+  every other panel; roomier table rows with a sticky-header hairline that cannot
+  scroll away; consistent radii and hover states; footer links underlined with a
+  gradient so hovering never shifts text.
+- `static/explainer.html` uses the shared design tokens (spacing, radii, type
+  scale) instead of raw pixel values.
+
+### Fixed
+- `static/explainer.html` set `background: var(--panel)` — a token that does not
+  exist — so its `<main>` card painted transparent, and its table header row was
+  not inside a `<thead>`, so the global header styling never applied and those
+  cells had no padding.
+- **`ruff check .` was failing on a clean checkout** (7 findings), none of them in
+  the files this change touches: the tracked dev helpers `_dump.py` and
+  `_routes.py` opened files without context managers, `_routes.py` imported an
+  unused `re`, `app.py` and `services/insights.py` had unsorted imports, and
+  `services/readmodels.py` called `zip()` without `strict=`. A red gate hides the
+  next real finding, so all seven are fixed rather than tolerated.
+- **`black --check .` was failing on a clean checkout** as well, for an unrelated
+  reason: `requirements-dev.txt` set open floors (`black>=24.0`, `ruff>=0.6`), so
+  CI installed whatever was newest, while the committed code is black 24.8.0
+  output — the rev pinned in `.pre-commit-config.yaml`. black 25/26 reformats 11
+  files, none of them related to this change (`git archive HEAD` + the same
+  command reproduces the identical list, so the drift predates it). Both tools are
+  now pinned to the pre-commit revs; reformatting 11 unrelated files to please a
+  newer black would have been the wrong fix.
+- **Two generated scratch files were committed to the repository and are now
+  untracked** (left on disk and added to `.gitignore`): `_app_dump.txt`, a 21KB
+  numbered dump of `app.py` written by the `_dump.py` dev helper, and
+  `verify_full_output.txt`, a 107-byte log containing nothing but a Windows
+  `timeout` usage error. `verify_results.txt`, rewritten by every `verify.py` run,
+  is ignored before it can join them. Reverting the removals is
+  `git reset HEAD _app_dump.txt verify_full_output.txt`.
+
+### Not claimed, honestly
+- **No dark theme.** The palette is light-only; `color-scheme: light` only stops
+  UA widgets from following the OS, it is not a dark mode.
+- `prefers-reduced-motion` is honoured (animations and transitions are disabled),
+  but Windows High Contrast / `forced-colors` is neither tested nor handled.
+- **`--down-ink` has no human design review.** The ratios are measured and the
+  declarations are asserted, but nobody has judged `#04684f` text beside `#009e73`
+  bars for feel — contrast proves legibility, not harmony.
+- Verification here was headless Chrome renders plus `verify.py`, `test_web.py`,
+  pytest, the Node helper tests and mypy. Nobody has opened these pages in a real
+  browser during this change, so font smoothing, scrollbars, real `:hover` /
+  `:focus-visible` and narrow-width sticky behaviour remain eyeball-check work.
+- **The parity tests are not CSS coverage.** They read the stylesheets as text and
+  prove that colours agree, declarations exist and ratios hold; nothing here checks
+  overrides, specificity or that a rule is actually applied, and no stylelint /
+  csstree pass runs.
+
+### Known issues (pre-existing, not introduced here)
+- Long tables pin their headers to `.table-wrap`'s own scrollport, not the page:
+  `overflow-x: auto` makes the wrapper the scrolling ancestor, so a column header
+  does not follow the page scroll. The horizontal row-head pinning the `/data` hint
+  promises does work, and the dashboard's `.tablebox` is unaffected because it owns
+  a `max-height: 420px` scroller. Fixing the vertical case means dropping the sticky
+  header or making the wrapper the scroller; reported rather than changed here.
+
+
 ## [0.5.0] - 2026-09-19
 
 ### Added

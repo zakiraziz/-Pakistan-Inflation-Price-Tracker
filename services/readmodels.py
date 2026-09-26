@@ -145,7 +145,7 @@ def group_by_item(rows):
 def weekly_changes(prices):
     """Week-over-week percentage changes for a list of prices."""
     out = []
-    for prev, cur in zip(prices, prices[1:]):
+    for prev, cur in zip(prices, prices[1:], strict=False):
         if prev:
             out.append((cur - prev) / prev * 100.0)
     return out

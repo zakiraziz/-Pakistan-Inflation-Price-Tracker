@@ -11,3 +11,7 @@ venv/
 htmlcov/
 # scratch logs written by verify.py / test_web.py runs
 *.log
+verify_results.txt
+verify_full_output.txt
+# scratch dump written by the tracked dev helper _dump.py
+_app_dump.txt
