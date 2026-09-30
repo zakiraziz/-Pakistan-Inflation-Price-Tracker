@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pakistan Inflation · Price Tracker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>🇵🇰 Pakistan Inflation / Price Tracker</h1>
+  <p class="sub">Weekly prices for a basket of everyday goods · data via <code>app.py</code> / <code>job.py</code></p>
+</header>
+
+<section class="controls">
+  <label>From <input type="date" id="start" /></label>
+  <label>To <input type="date" id="end" /></label>
+  <label>Jump alert ≥
+    <input type="number" id="threshold" value="5" min="1" max="100" step="1" /> %
+  </label>
+  <button id="apply" class="btn">Apply filters</button>
+</section>
+
+<section class="filters">
+  <h2>Basket</h2>
+  <div class="category-filters" id="categoryFilters"></div>
+  <details open>
+    <summary>Choose items</summary>
+    <div class="item-list" id="itemList"></div>
+  </details>
+</section>
+
+<section class="cards" id="cards"></section>
+
+<section class="chart-wrap">
+  <canvas id="priceChart"></canvas>
+  <p class="hint" id="chartHint"></p>
+</section>
+
+<section class="alerts">
+  <h2>⚠️ Price-jump alerts</h2>
+  <div id="alertBox"></div>
+</section>
+
+<footer>
+  <p>Read the <a href="explainer.html" target="_blank">economics explainer</a>.</p>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

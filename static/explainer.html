@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Economics explainer · Pakistan Inflation / Price Tracker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    main { max-width: 760px; margin: 0 auto; background: var(--panel); border-radius: 12px; padding: 24px 28px; }
+    main h1 { color: var(--accent); }
+    main h2 { color: var(--ink); margin-top: 22px; }
+    main p, main li { color: var(--ink); line-height: 1.65; }
+    main table { width: 100%; font-size: 0.9rem; }
+    .note { color: var(--muted); font-size: 0.85rem; }
+    a.back { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <p><a class="back" href="/">← back to the tracker</a></p>
+  <h1>Economics explainer: what this data shows</h1>
+  <p class="note">All figures below are computed from the seeded database (reproduce with <code>python analyze.py</code>).</p>
+
+  <h2>The headline</h2>
+  <p>The equal-weight basket of 11 everyday goods rose about <b>+114% in PKR</b> from
+  January 2023 to late 2026 — an average of roughly <b>24% per year</b>. A shopper who
+  needed <b>Rs 6,477</b> to fill the basket in early 2023 needs about <b>Rs 13,860</b> to
+  buy the same things today. Prices broadly doubled in three and a half years.</p>
+
+  <table>
+    <tr><th>Item</th><th>Start → latest</th><th>Cumulative</th></tr>
+    <tr><td>Electricity (kWh)</td><td>35 → 87</td><td class="up">+151%</td></tr>
+    <tr><td>Petrol (L)</td><td>271 → 637</td><td class="up">+135%</td></tr>
+    <tr><td>Wheat flour · 20 kg</td><td>1,950 → 4,361</td><td class="up">+124%</td></tr>
+    <tr><td>Sugar (kg)</td><td>157 → 352</td><td class="up">+124%</td></tr>
+    <tr><td>Eggs (dozen)</td><td>343 → 742</td><td class="up">+117%</td></tr>
+    <tr><td>Cooking oil · 5 L</td><td>2,487 → 5,226</td><td class="up">+110%</td></tr>
+    <tr><td>Basmati rice (kg)</td><td>216 → 453</td><td class="up">+110%</td></tr>
+    <tr><td>Fresh milk (L)</td><td>228 → 475</td><td class="up">+108%</td></tr>
+    <tr><td>Chicken (kg)</td><td>598 → 1,177</td><td class="up">+97%</td></tr>
+    <tr><td>Onion (kg)</td><td>125 → 242</td><td class="up">+94%</td></tr>
+    <tr><td>Potato (kg)</td><td>67 → 107</td><td class="up">+59%</td></tr>
+  </table>
+
+  <h2>Why the lines are steep in 2023 and flatten by 2025–26</h2>
+  <p>Zoom into 2023–24 and the lines climb steeply; from 2025 on they are much flatter.
+  This mirrors Pakistan's actual inflation narrative:</p>
+  <ol>
+    <li><b>2022–23 — price shocks stack.</b> The 2022 floods hit cotton, rice, onion and
+    potato harvests; the rupee depreciated against the dollar (raising the PKR cost of
+    imported oil and food inputs); and electricity tariffs were re-based. Food and energy
+    prices ratcheted up together — hence the steep start of every line.</li>
+    <li><b>2024 — high but easing.</b> Headline inflation stayed in double digits but the
+    pace slowed as shock effects left the year-on-year comparison and policy tightened.</li>
+    <li><b>2025–26 — disinflation.</b> With the price base already ~doubled, new percentage
+    increases shrank even though prices stayed elevated. Flat lines here mean <em>falling
+    inflation, not falling prices</em>.</li>
+  </ol>
+  <p class="note">Key concept: <b>inflation is the rate of change of prices, not the price
+  level.</b> A big initial shock pushes both the level and the y/y reading up for about a
+  year (the "base effect"); as that base rolls off, the same high level can coexist with
+  low inflation.</p>
+
+  <h2>Energy rises most and pulls the rest up</h2>
+  <p>Electricity (+151%) and petrol (+135%) grew fastest. Energy sits behind almost
+  everything: fuel transports, stores and processes food, and electricity runs mills and
+  retail cold chains. When energy spikes it ripples through the whole basket — why even
+  normally-priced food rose ~100%. That is a classic <b>cost-push (supply-side)</b>
+  channel.</p>
+
+  <h2>Why the alerts cluster on onion and potato</h2>
+  <p>With the date filters set to one week you'll see the jump alerts fire on fresh produce
+  again and again (e.g. potatoes +36% in a week). These spikes reflect <b>supply and
+  season</b>, not a re-acceleration of general inflation:</p>
+  <ul>
+    <li><b>Harvest timing</b> — plenty right after harvest, scarce months later.</li>
+    <li><b>Perishability</b> — little buffer between a bad yield and a price spike.</li>
+    <li><b>Import dependence in lean months</b> — exposing prices to the exchange rate
+    and border logistics.</li>
+  </ul>
+  <p>So a +30% potato week is a scarcity signal, while steady risers like atta, sugar and
+  rice carry the underlying (sticky) inflation burden. Economists separate the volatile
+  food-and-energy part from a "core" measure to judge whether the trend is genuinely
+  cooling — and on this data it is by 2025–26.</p>
+
+  <p class="note">This is a representative educational dataset: the shape mirrors Pakistan's
+  real CPI experience (high inflation easing to disinflation, volatile fresh produce, high
+  energy pass-through) rather than being a precise official series.</p>
+</main>
+</body>
+</html>
